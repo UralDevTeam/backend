@@ -1,0 +1,7 @@
+Админка LDAP:
+
+* http://127.0.0.1:8080
+
+* Login DN: cn=admin,dc=example,dc=org
+
+* Пароль: admin
