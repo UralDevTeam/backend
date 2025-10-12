@@ -1,9 +1,22 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from app.api.ping import router as ping_router
+from app.api.users import router as users_router
+from app.services.ad_users import Store
 
-app = FastAPI(title="Ping API (modular)")
+CSV_PATH = "app/res/test_users.csv"
 
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    application.state.store = Store(CSV_PATH)
+    application.state.store.load()
+    yield
+
+app = FastAPI(title="UDV Team Map API", lifespan=lifespan)
 app.include_router(ping_router, prefix="/api", tags=["ping"])
+app.include_router(users_router, prefix="/api", tags=["users"])
+
 
 if __name__ == "__main__":
     import uvicorn

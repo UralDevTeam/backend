@@ -5,20 +5,13 @@
 
 # Запуск проекта
 
-### 1. Склонируйте репозиторий
-
-```bash
-git clone https://github.com/yourname/fastapi-ldap.git
-cd fastapi-ldap
-```
-
-### 2. Соберите и запустите контейнеры
+### 1. Соберите и запустите контейнеры
 
 ```bash
 docker compose up --build
 ```
 
-### 3. Проверьте работу сервиса
+### 2. Проверьте работу сервиса
 
 **Проверка API:**
 
@@ -39,7 +32,7 @@ curl http://127.0.0.1:8000/ldap/ping
 
 ---
 
-### 4. Веб-интерфейс LDAP (phpLDAPadmin)
+### 3. Веб-интерфейс LDAP (phpLDAPadmin)
 
 * URL: [http://127.0.0.1:8080](http://127.0.0.1:8080)
 * Login DN: `cn=admin,dc=example,dc=org`
@@ -47,7 +40,7 @@ curl http://127.0.0.1:8000/ldap/ping
 
 ---
 
-### 5. Остановка контейнеров
+### 4. Остановка контейнеров
 
 ```bash
 docker compose down
