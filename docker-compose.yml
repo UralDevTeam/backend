@@ -1,0 +1,41 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    container_name: fastapi-ldap-app
+    environment:
+      LDAP_HOST: openldap
+      LDAP_PORT: 389
+      LDAP_SSL: "false"
+      LDAP_STARTTLS: "false"
+      LDAP_BIND_DN: "cn=admin,dc=example,dc=org"
+      LDAP_BIND_PASSWORD: "admin"
+      LDAP_BASE_DN: "dc=example,dc=org"
+      LDAP_TIMEOUT: "5"
+      LDAP_TLS_VALIDATE: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - openldap
+
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: openldap
+    environment:
+      LDAP_ORGANISATION: "Example Org"
+      LDAP_DOMAIN: "example.org"
+      LDAP_ADMIN_PASSWORD: "admin"
+    ports:
+      - "389:389"
+      - "636:636"
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: phpldapadmin
+    environment:
+      PHPLDAPADMIN_HTTPS: "false"
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+    depends_on:
+      - openldap
+    ports:
+      - "8080:80"
