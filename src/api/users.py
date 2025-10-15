@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
-from app.services.ad_users import ADUser
+from src.services.ad_users import ADUser
 from typing import List
-from app.services.ad_users import Store, get_store
+from src.services.ad_users import Store, get_store
 
 router = APIRouter()
 

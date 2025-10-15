@@ -18,6 +18,15 @@ services:
     depends_on:
       - openldap
 
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: "guest"
+      POSTGRES_USER: "guest"
+      POSTGRES_PASSWORD: "guest"
+    ports:
+      - "5432:5432"
+
   openldap:
     image: osixia/openldap:1.5.0
     container_name: openldap

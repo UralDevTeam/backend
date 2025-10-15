@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from app.api.ping import router as ping_router
-from app.api.users import router as users_router
-from app.services.ad_users import Store
+from src.api.ping import router as ping_router
+from src.api.users import router as users_router
+from src.services.ad_users import Store
 
 CSV_PATH = "app/res/test_users.csv"
 
