@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.infrastructure.db.models import Base
+from src.infrastructure.db.models.base import Base
 
 
 class Team(Base):
@@ -10,10 +10,10 @@ class Team(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     parent_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("teams.team_id", ondelete="SET NULL")
+        BigInteger, ForeignKey("teams.id")
     )
     leader_employee_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("employees.employee_id", ondelete="SET NULL")
+        BigInteger, ForeignKey("employees.id")
     )
 
     parent: Mapped["Team" | None] = relationship(

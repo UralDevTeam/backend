@@ -1,7 +1,7 @@
 from sqlalchemy import BigInteger, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.infrastructure.db.models import Base
+from src.infrastructure.db.models.base import Base
 
 
 class Position(Base):
@@ -10,4 +10,4 @@ class Position(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
 
-    employees: Mapped[list["Employee"]] = relationship(back_populates="position")
+    employee: Mapped["Employee"] = relationship(back_populates="status_history")

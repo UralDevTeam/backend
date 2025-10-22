@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import BigInteger, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.infrastructure.db.models import Base
+from src.infrastructure.db.models.base import Base
 
 
 class StatusHistory(Base):
@@ -11,7 +11,7 @@ class StatusHistory(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     employee_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("employees.employee_id", ondelete="CASCADE")
+        BigInteger, ForeignKey("employees.id")
     )
     status: Mapped[str] = mapped_column(String, nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

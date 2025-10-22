@@ -1,9 +1,10 @@
 from datetime import date
 
 from sqlalchemy import BigInteger, String, Date, ForeignKey, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.infrastructure.db.models import Base
+from src.infrastructure.db.models import Team
+from src.infrastructure.db.models.base import Base
 
 
 class Employee(Base):
@@ -20,10 +21,10 @@ class Employee(Base):
     about_me: Mapped[str | None] = mapped_column(Text)
 
     team_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("teams.team_id", ondelete="SET NULL")
+        BigInteger, ForeignKey("teams.id", use_alter=True)
     )
     position_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("positions.position_id", ondelete="SET NULL")
+        BigInteger, ForeignKey("positions.id")
     )
 
     team: Mapped["Team" | None] = relationship(back_populates="members", foreign_keys=[team_id])
