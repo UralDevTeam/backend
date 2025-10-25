@@ -1,37 +1,45 @@
+from typing import Optional
+
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from uuid import UUID
+from uuid6 import uuid7
 from datetime import date
 
-from sqlalchemy import BigInteger, String, Date, ForeignKey, Text
+from sqlalchemy import String, Date, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.infrastructure.db.models import Team
 from src.infrastructure.db.models.base import Base
 
 
-class Employee(Base):
+class EmployeeOrm(Base):
     __tablename__ = "employees"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    last_name: Mapped[str] = mapped_column(String, nullable=False)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True),
+                                     primary_key=True,
+                                     default=uuid7,
+                                     )
     first_name: Mapped[str] = mapped_column(String, nullable=False)
-    middle_name: Mapped[str | None] = mapped_column(String)
-    birth_date: Mapped[date | None] = mapped_column(Date)
-    hire_date: Mapped[date | None] = mapped_column(Date)
-    city: Mapped[str | None] = mapped_column(String)
-    phone: Mapped[str | None] = mapped_column(String)
-    about_me: Mapped[str | None] = mapped_column(Text)
+    middle_name: Mapped[str] = mapped_column(String, nullable=False)
+    last_name: Mapped[str] = mapped_column(String, nullable=False)
+    birth_date: Mapped[date] = mapped_column(Date, nullable=False)
+    hire_date: Mapped[date] = mapped_column(Date, nullable=False)
+    city: Mapped[str] = mapped_column(String, nullable=False)
+    phone: Mapped[str] = mapped_column(String, nullable=False)
+    mattermost: Mapped[str] = mapped_column(String, nullable=False)
+    about_me: Mapped[str | None] = mapped_column(String)
 
-    team_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("teams.id", use_alter=True)
+    team_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False
     )
-    position_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("positions.id")
+    position_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("positions.id"), nullable=False
     )
 
-    team: Mapped["Team" | None] = relationship(back_populates="members", foreign_keys=[team_id])
-    position: Mapped["Position" | None] = relationship(back_populates="employees", foreign_keys=[position_id])
+    team: Mapped["Team"] = relationship(back_populates="members")
+    position: Mapped[Optional["Position"]] = relationship(back_populates="employees")
 
-    leading_team: Mapped["Team" | None] = relationship(
-        "Team", back_populates="leader", uselist=False, foreign_keys=[Team.leader_employee_id]
+    leading_team: Mapped[Optional["Team"]] = relationship(
+        "Team", back_populates="leader", uselist=False
     )
 
     status_history: Mapped[list["EmployeeStatusHistory"]] = relationship(

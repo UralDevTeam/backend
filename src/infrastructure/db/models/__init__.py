@@ -1,11 +1,11 @@
-from .empoyee import Employee
-from .position import Position
-from .status_history import StatusHistory
-from .team import Team
+from .empoyee import EmployeeOrm
+from .position import PositionOrm
+from .status_history import StatusHistoryOrm
+from .team import TeamOrm
 
 __all__ = [
-    "Employee",
-    "Position",
-    "StatusHistory",
-    "Team",
+    "EmployeeOrm",
+    "PositionOrm",
+    "StatusHistoryOrm",
+    "TeamOrm",
 ]
