@@ -15,7 +15,7 @@ class EmployeeRepository:
         select_employee_stmt = select(EmployeeOrm).where(EmployeeOrm.id == id)
         employee_orm: EmployeeOrm = (await self._session.execute(select_employee_stmt)).scalar_one()
         # команда
-        team_orm: TeamOrm = (await self._session.execute(select(TeamOrm).where(TeamOrm.id == employee_orm))).scalar_one()
+        team_orm: TeamOrm = (await self._session.execute(select(TeamOrm).where(TeamOrm.id == employee_orm.team_id))).scalar_one()
         team = Team.model_validate(team_orm)
         # начальник
         # статус
