@@ -5,7 +5,7 @@ from src.api.ping import router as ping_router
 from src.api.users import router as users_router
 from src.services.ad_users import Store
 
-CSV_PATH = "app/res/test_users.csv"
+CSV_PATH = "src/res/test_users.csv"
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):

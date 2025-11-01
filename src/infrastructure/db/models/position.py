@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from src.infrastructure.db.models.base import Base
+from src.infrastructure.db.models.employee import EmployeeOrm
 
 
 class PositionOrm(Base):
@@ -16,4 +17,8 @@ class PositionOrm(Base):
                                      )
     title: Mapped[str] = mapped_column(String, nullable=False)
 
-    employee: Mapped["Employee"] = relationship(back_populates="status_history")
+    employees: Mapped[list["EmployeeOrm"]] = relationship(
+        "EmployeeOrm",
+        back_populates="position",
+        foreign_keys="EmployeeOrm.position_id",
+    )

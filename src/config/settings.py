@@ -1,4 +1,5 @@
 import pathlib
+from typing import Optional
 
 from pydantic import AmqpDsn, Field, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict

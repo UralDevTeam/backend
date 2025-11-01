@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
 from src.infrastructure.db.models.base import Base
+from src.infrastructure.db.models.employee import EmployeeOrm
 
 
 class StatusHistoryOrm(Base):
@@ -22,4 +23,4 @@ class StatusHistoryOrm(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    employee: Mapped["Employee"] = relationship(back_populates="status_history")
+    employee: Mapped["EmployeeOrm"] = relationship(back_populates="status_history")

@@ -2,7 +2,10 @@ from pydantic import BaseModel, ConfigDict
 from uuid import UUID
 from datetime import date
 
-from src.domain.models import Position, Team, StatusHistory
+from .position import Position
+from .team import Team
+from .status_history import StatusHistory
+
 
 
 class Employee(BaseModel):
