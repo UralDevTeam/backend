@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Переносим виртуальное окружение и код
 COPY --from=builder /src/.venv /opt/venv
 COPY --from=builder /src /src
+COPY docker/entrypoint.sh /entrypoint.sh
 
 ENV VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:${PATH}"
@@ -33,9 +34,13 @@ ENV VIRTUAL_ENV=/opt/venv \
 # Безопасный пользователь
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /src
+RUN chmod +x /entrypoint.sh
+
 USER appuser
 
 EXPOSE 8000
 
 # Точка входа
+# Точка входа запускает миграции перед стартом API
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
