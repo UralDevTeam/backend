@@ -1,8 +1,11 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 from datetime import date
 
-from src.domain.models import Position, Team, StatusHistory
+from .position import Position
+from .team import Team
+from .status_history import StatusHistory
+
 
 
 class Employee(BaseModel):
@@ -15,9 +18,9 @@ class Employee(BaseModel):
     city: str
     phone: str
     mattermost: str
-    about_me: str
-    position: Position
-    team: Team
-    status_history: list[StatusHistory]
+    about_me: str | None = None
+    position: Position | None = None
+    team: Team | None = None
+    status_history: list[StatusHistory] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True, extra="ignore")
