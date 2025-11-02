@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,65 +15,45 @@ class EmployeeRepository:
 
     async def get_by_id(self, id: UUID) -> Optional[Employee]:
         # Используем selectinload для эффективной загрузки связанных данных
-        select_employee_stmt = (
+        stmt = (
             select(EmployeeOrm)
             .where(EmployeeOrm.id == id)
             .options(
                 selectinload(EmployeeOrm.team),
                 selectinload(EmployeeOrm.position),
-                selectinload(EmployeeOrm.status_history)
+                selectinload(EmployeeOrm.status_history),
             )
         )
 
-        result = await self._session.execute(select_employee_stmt)
+        result = await self._session.execute(stmt)
         employee_orm: EmployeeOrm | None = result.scalar_one_or_none()
 
         if not employee_orm:
             return None
 
-        # Команда
-        team = None
-        if employee_orm.team_id:
-            team_orm: TeamOrm = (
-                await self._session.execute(
-                    select(TeamOrm).where(TeamOrm.id == employee_orm.team_id)
-                )
-            ).scalar_one_or_none()
-            if team_orm:
-                team = Team.model_validate(team_orm)
+        return self._to_domain(employee_orm)
 
-        # История статусов
-        status_history_orms: list[StatusHistoryOrm] = (
-            await self._session.execute(
-                select(StatusHistoryOrm).where(StatusHistoryOrm.employee_id == employee_orm.id)
-            )
-        ).scalars().all()
+    async def get_all(self) -> list[Employee]:
+        stmt = select(EmployeeOrm).options(
+            selectinload(EmployeeOrm.team),
+            selectinload(EmployeeOrm.position),
+            selectinload(EmployeeOrm.status_history),
+        )
+        result = await self._session.execute(stmt)
+        employee_orms: Sequence[EmployeeOrm] = result.scalars().all()
+        return [self._to_domain(employee_orm) for employee_orm in employee_orms]
+
+    def _to_domain(self, employee_orm: EmployeeOrm) -> Employee:
+        team = Team.model_validate(employee_orm.team) if employee_orm.team else None
+        position = (
+            Position.model_validate(employee_orm.position)
+            if employee_orm.position
+            else None
+        )
         status_history = [
-            StatusHistory.model_validate(sh_orm) for sh_orm in status_history_orms
+            StatusHistory.model_validate(record)
+            for record in (employee_orm.status_history or [])
         ]
-
-        # Должность
-        position = None
-        if employee_orm.position_id:
-            position_orm: PositionOrm = (
-                await self._session.execute(
-                    select(PositionOrm).where(PositionOrm.id == employee_orm.position_id)
-                )
-            ).scalar_one_or_none()
-            if position_orm:
-                position = Position.model_validate(position_orm)
-
-        # Начальник (если есть связь)
-        manager = None
-        if hasattr(employee_orm, 'manager_id') and employee_orm.manager_id:
-            manager_orm: EmployeeOrm = (
-                await self._session.execute(
-                    select(EmployeeOrm).where(EmployeeOrm.id == employee_orm.manager_id)
-                )
-            ).scalar_one_or_none()
-            if manager_orm:
-                # Для начальника создаем упрощенную модель или рекурсивно вызываем get_by_id
-                manager = await self.get_by_id(manager_orm.id)
 
         return Employee(
             id=employee_orm.id,
