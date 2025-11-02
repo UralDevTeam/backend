@@ -2,21 +2,20 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.services.ad_users import ADUser
-from typing import List, Optional
-from src.services.ad_users import Store, get_store
+from typing import List, Optional, AsyncGenerator
 from src.infrastructure.repositories.employee import EmployeeRepository
 from src.infrastructure.db.base import async_session_factory
-from pydantic import BaseModel
 
 router = APIRouter()
 
+
 class UserLinkDTO(BaseModel):
     id: str
-    fullName: str  # Траблона Е.К.
-    shortName: str  # Иванова Анастасия Сергеевна
+    fullName: str
+    shortName: str
 
 
 class UserDTO(BaseModel):
@@ -32,6 +31,7 @@ class UserDTO(BaseModel):
     city: str
     contact: str
     aboutMe: str
+
 
 def _build_full_name(employee) -> str:
     parts = [
@@ -99,7 +99,7 @@ def _resolve_status(employee) -> str:
     if history:
         sorted_history = sorted(
             [record for record in history if getattr(record, "started_at", None)],
-            key=lambda record: record.started_at,
+            key=lambda rec: rec.started_at,
             reverse=True,
         )
         if sorted_history and getattr(sorted_history[0], "status", None):
@@ -126,11 +126,60 @@ def _resolve_boss_id(employee) -> Optional[UUID]:
     return leader_id
 
 
+def _build_boss_link(boss) -> Optional[UserLinkDTO]:
+    if not boss:
+        return None
+    return UserLinkDTO(
+        id=str(getattr(boss, "id")),
+        fullName=_build_full_name(boss),
+        shortName=_build_short_name(boss),
+    )
 
-async def get_db() -> AsyncSession:
+
+def _to_user_dto(employee, boss=None) -> UserDTO:
+    return UserDTO(
+        id=str(getattr(employee, "id")),
+        fio=_build_full_name(employee),
+        birthday=(
+            employee.birth_date.isoformat()
+            if getattr(employee, "birth_date", None)
+            else ""
+        ),
+        team=_resolve_team(employee),
+        boss=_build_boss_link(boss),
+        role=_resolve_role(employee),
+        grade=_resolve_grade(employee),
+        experience=_resolve_experience(employee),
+        status=_resolve_status(employee),
+        city=getattr(employee, "city", "") or "",
+        contact=_resolve_contact(employee),
+        aboutMe=getattr(employee, "about_me", "") or "",
+    )
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency для получения сессии БД"""
     async with async_session_factory() as session:
         yield session
+
+
+@router.get("/users", response_model=List[UserDTO])
+async def get_users(db: AsyncSession = Depends(get_db)):
+    repo = EmployeeRepository(db)
+    employees = await repo.get_all()
+    employees_by_id = {employee.id: employee for employee in employees}
+
+    def _sort_key(employee):
+        return _build_full_name(employee).lower()
+
+    dtos: List[UserDTO] = []
+    for employee in sorted(employees, key=_sort_key):
+        boss = None
+        boss_id = _resolve_boss_id(employee)
+        if boss_id:
+            boss = employees_by_id.get(boss_id)
+        dtos.append(_to_user_dto(employee, boss=boss))
+    return dtos
 
 
 @router.get("/users/{user_id}", response_model=UserDTO)
@@ -142,43 +191,9 @@ async def get_user_by_id(user_id: UUID, db: AsyncSession = Depends(get_db)):
     if not employee:
         raise HTTPException(status_code=404, detail=f"User with id '{user_id}' not found")
 
-    # Маппинг Employee model -> UserDTO
-    # Формируем boss если есть
-    boss_dto = None
+    boss = None
     boss_id = _resolve_boss_id(employee)
     if boss_id:
         boss = await repo.get_by_id(boss_id)
-        if boss:
-            boss_dto = UserLinkDTO(
-                id=str(boss.id),
-                fullName=_build_full_name(boss),
-                shortName=_build_short_name(boss)
-            )
 
-    return UserDTO(
-        id=str(employee.id),
-        fio=_build_full_name(employee),
-        birthday=employee.birth_date.isoformat() if getattr(employee, "birth_date", None) else "",
-        team=_resolve_team(employee),
-        boss=boss_dto,
-        role=_resolve_role(employee),
-        grade=_resolve_grade(employee),
-        experience=_resolve_experience(employee),
-        status=_resolve_status(employee),
-        city=getattr(employee, "city", "") or "",
-        contact=_resolve_contact(employee),
-        aboutMe=employee.about_me or ""
-    )
-
-
-@router.get("/users/all", response_model=List[ADUser])
-def users(store: Store = Depends(get_store)):
-    total, items = store.search(q=None, enabled=True, department=None, title=None, offset=0, limit=10 ** 9,
-                                sort='name')
-    return items
-
-
-@router.post("/reload")
-def reload_data(store: Store = Depends(get_store)):
-    store.load()
-    return {"status": "ok", "count": len(store.items)}
+    return _to_user_dto(employee, boss=boss)
