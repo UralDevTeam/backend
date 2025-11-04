@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from src.api.ping import router as ping_router
 from src.api.users import router as users_router
+from src.api.auth import router as auth_router
 from src.services.ad_users import Store
 
 CSV_PATH = "src/res/test_users.csv"
@@ -16,6 +17,7 @@ async def lifespan(application: FastAPI):
 app = FastAPI(title="UDV Team Map API", lifespan=lifespan)
 app.include_router(ping_router, prefix="/api", tags=["ping"])
 app.include_router(users_router, prefix="/api", tags=["users"])
+app.include_router(auth_router, prefix="/api", tags=["auth"])
 
 
 if __name__ == "__main__":
