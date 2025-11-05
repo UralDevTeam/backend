@@ -60,6 +60,7 @@ class EmployeeRepository:
             first_name=employee_orm.first_name,
             middle_name=employee_orm.middle_name,
             last_name=employee_orm.last_name,
+            email=employee_orm.email,
             birth_date=employee_orm.birth_date,
             hire_date=employee_orm.hire_date,
             city=employee_orm.city,
