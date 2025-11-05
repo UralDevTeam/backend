@@ -5,6 +5,7 @@ from src.api.ping import router as ping_router
 from src.api.users import router as users_router
 from src.api.auth import router as auth_router
 from src.services.ad_users import Store
+from src.infrastructure.db.base import init_models
 
 CSV_PATH = "src/res/test_users.csv"
 
@@ -12,6 +13,7 @@ CSV_PATH = "src/res/test_users.csv"
 async def lifespan(application: FastAPI):
     application.state.store = Store(CSV_PATH)
     application.state.store.load()
+    await init_models()
     yield
 
 app = FastAPI(title="UDV Team Map API", lifespan=lifespan)
