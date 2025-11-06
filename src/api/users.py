@@ -2,12 +2,14 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import List, Optional, AsyncGenerator
 from src.infrastructure.repositories.employee import EmployeeRepository
 from src.infrastructure.db.base import async_session_factory
+from src.api.auth import get_current_user
+from src.domain.models.user import User
 
 router = APIRouter()
 
@@ -31,6 +33,19 @@ class UserDTO(BaseModel):
     city: str
     contact: str
     aboutMe: str
+
+
+class UserUpdatePayload(BaseModel):
+    city: Optional[str] = None
+    phone: Optional[str] = None
+    mattermost: Optional[str] = None
+    about_me: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("aboutMe", "about_me"),
+        serialization_alias="aboutMe",
+    )
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
 def _build_full_name(employee) -> str:
@@ -163,6 +178,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+def _ensure_access(user: User) -> None:
+    if user.role not in {"admin", "user"}:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @router.get("/users", response_model=List[UserDTO])
 async def get_users(db: AsyncSession = Depends(get_db)):
     repo = EmployeeRepository(db)
@@ -190,6 +210,54 @@ async def get_user_by_id(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
     if not employee:
         raise HTTPException(status_code=404, detail=f"User with id '{user_id}' not found")
+
+    boss = None
+    boss_id = _resolve_boss_id(employee)
+    if boss_id:
+        boss = await repo.get_by_id(boss_id)
+
+    return _to_user_dto(employee, boss=boss)
+
+@router.get("/me", response_model=UserDTO)
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_access(current_user)
+
+    repo = EmployeeRepository(db)
+    employee = await repo.get_by_email(current_user.email)
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found for current user")
+
+    boss = None
+    boss_id = _resolve_boss_id(employee)
+    if boss_id:
+        boss = await repo.get_by_id(boss_id)
+
+    return _to_user_dto(employee, boss=boss)
+
+
+@router.put("/me", response_model=UserDTO)
+async def update_me(
+    payload: UserUpdatePayload,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_access(current_user)
+
+    repo = EmployeeRepository(db)
+    employee = await repo.get_by_email(current_user.email)
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found for current user")
+
+    update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
+
+    if update_data:
+        employee = await repo.update_partial(employee.id, update_data)
+        await db.commit()
 
     boss = None
     boss_id = _resolve_boss_id(employee)

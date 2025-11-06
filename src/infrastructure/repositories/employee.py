@@ -1,7 +1,7 @@
 from uuid import UUID
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -33,6 +33,25 @@ class EmployeeRepository:
 
         return self._to_domain(employee_orm)
 
+    async def get_by_email(self, email: str) -> Optional[Employee]:
+        stmt = (
+            select(EmployeeOrm)
+            .where(EmployeeOrm.email == email)
+            .options(
+                selectinload(EmployeeOrm.team),
+                selectinload(EmployeeOrm.position),
+                selectinload(EmployeeOrm.status_history),
+            )
+        )
+
+        result = await self._session.execute(stmt)
+        employee_orm: EmployeeOrm | None = result.scalar_one_or_none()
+
+        if not employee_orm:
+            return None
+
+        return self._to_domain(employee_orm)
+
     async def get_all(self) -> list[Employee]:
         stmt = select(EmployeeOrm).options(
             selectinload(EmployeeOrm.team),
@@ -42,6 +61,27 @@ class EmployeeRepository:
         result = await self._session.execute(stmt)
         employee_orms: Sequence[EmployeeOrm] = result.scalars().all()
         return [self._to_domain(employee_orm) for employee_orm in employee_orms]
+
+    async def update_partial(self, id: UUID, data: dict[str, Any]) -> Employee:
+        if not data:
+            employee = await self.get_by_id(id)
+            if not employee:
+                raise ValueError(f"Employee with id '{id}' not found")
+            return employee
+
+        stmt = (
+            update(EmployeeOrm)
+            .where(EmployeeOrm.id == id)
+            .values(**data)
+            .execution_options(synchronize_session="fetch")
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
+
+        employee = await self.get_by_id(id)
+        if not employee:
+            raise ValueError(f"Employee with id '{id}' not found")
+        return employee
 
     def _to_domain(self, employee_orm: EmployeeOrm) -> Employee:
         team = Team.model_validate(employee_orm.team) if employee_orm.team else None

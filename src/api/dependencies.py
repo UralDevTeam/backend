@@ -17,5 +17,6 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         else:
             await session.commit()
 
+
 def get_user_repository(session: AsyncSession = Depends(get_session)) -> UserRepository:
     return UserRepository(session)
