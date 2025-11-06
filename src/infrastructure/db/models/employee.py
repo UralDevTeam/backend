@@ -27,6 +27,7 @@ class EmployeeOrm(Base):
     middle_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     birth_date: Mapped[date] = mapped_column(Date, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
     hire_date: Mapped[date] = mapped_column(Date, nullable=False)
     city: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str] = mapped_column(String, nullable=False)

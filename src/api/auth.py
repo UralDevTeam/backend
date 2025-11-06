@@ -45,8 +45,8 @@ async def register(payload: UserIn, user_repository: UserRepository = Depends(ge
 @router.post("/auth/login", response_model=UserOut, status_code=200)
 async def login(payload: UserIn, user_repository: UserRepository = Depends(get_user_repository)) -> UserOut:
     user = await user_repository.find_by_email(payload.email)
-    if not user:
-        raise HTTPException(400, "User does not exist")
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(401, "Invalid credentials")
     return UserOut(id=user.id, email=user.email, role=user.role)
 
 async def get_current_user(
@@ -71,7 +71,3 @@ async def get_current_user(
         )
 
     return user
-
-
-
-
