@@ -8,7 +8,8 @@
 ### 1. Соберите и запустите контейнеры
 
 ```bash
-docker compose up --build
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### 2. Проверьте работу сервиса
