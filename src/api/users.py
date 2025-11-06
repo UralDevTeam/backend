@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import List, Optional, AsyncGenerator
 from src.infrastructure.repositories.employee import EmployeeRepository
+from src.infrastructure.repositories.user import UserRepository
 from src.infrastructure.db.base import async_session_factory
 from src.api.auth import get_current_user
 from src.domain.models.user import User
@@ -33,6 +34,7 @@ class UserDTO(BaseModel):
     city: str
     contact: str
     aboutMe: str
+    isAdmin: bool
 
 
 class UserUpdatePayload(BaseModel):
@@ -151,7 +153,7 @@ def _build_boss_link(boss) -> Optional[UserLinkDTO]:
     )
 
 
-def _to_user_dto(employee, boss=None) -> UserDTO:
+def _to_user_dto(employee, boss=None, *, is_admin: bool = False) -> UserDTO:
     return UserDTO(
         id=str(getattr(employee, "id")),
         fio=_build_full_name(employee),
@@ -169,6 +171,7 @@ def _to_user_dto(employee, boss=None) -> UserDTO:
         city=getattr(employee, "city", "") or "",
         contact=_resolve_contact(employee),
         aboutMe=getattr(employee, "about_me", "") or "",
+        isAdmin=is_admin,
     )
 
 
@@ -186,6 +189,7 @@ def _ensure_access(user: User) -> None:
 @router.get("/users", response_model=List[UserDTO])
 async def get_users(db: AsyncSession = Depends(get_db)):
     repo = EmployeeRepository(db)
+    user_repo = UserRepository(db)
     employees = await repo.get_all()
     employees_by_id = {employee.id: employee for employee in employees}
 
@@ -198,7 +202,12 @@ async def get_users(db: AsyncSession = Depends(get_db)):
         boss_id = _resolve_boss_id(employee)
         if boss_id:
             boss = employees_by_id.get(boss_id)
-        dtos.append(_to_user_dto(employee, boss=boss))
+        email = getattr(employee, "email", None)
+        user = None
+        if email:
+            user = await user_repo.find_by_email(email)
+        is_admin = bool(user and user.role == "admin")
+        dtos.append(_to_user_dto(employee, boss=boss, is_admin=is_admin))
     return dtos
 
 
@@ -206,6 +215,7 @@ async def get_users(db: AsyncSession = Depends(get_db)):
 async def get_user_by_id(user_id: UUID, db: AsyncSession = Depends(get_db)):
     """Получить пользователя по ID из PostgreSQL"""
     repo = EmployeeRepository(db)
+    user_repo = UserRepository(db)
     employee = await repo.get_by_id(user_id)
 
     if not employee:
@@ -216,7 +226,10 @@ async def get_user_by_id(user_id: UUID, db: AsyncSession = Depends(get_db)):
     if boss_id:
         boss = await repo.get_by_id(boss_id)
 
-    return _to_user_dto(employee, boss=boss)
+    user = await user_repo.find_by_email(getattr(employee, "email", ""))
+    is_admin = bool(user and user.role == "admin")
+
+    return _to_user_dto(employee, boss=boss, is_admin=is_admin)
 
 @router.get("/me", response_model=UserDTO)
 async def get_me(
@@ -236,7 +249,9 @@ async def get_me(
     if boss_id:
         boss = await repo.get_by_id(boss_id)
 
-    return _to_user_dto(employee, boss=boss)
+    is_admin = current_user.role == "admin"
+
+    return _to_user_dto(employee, boss=boss, is_admin=is_admin)
 
 
 @router.put("/me", response_model=UserDTO)
@@ -264,4 +279,6 @@ async def update_me(
     if boss_id:
         boss = await repo.get_by_id(boss_id)
 
-    return _to_user_dto(employee, boss=boss)
+    is_admin = current_user.role == "admin"
+
+    return _to_user_dto(employee, boss=boss, is_admin=is_admin)

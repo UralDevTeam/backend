@@ -1,13 +1,7 @@
-from uuid import UUID
-from typing import Optional, Sequence
-
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from src.domain.models import Employee, Team, StatusHistory, Position
 from src.domain.models.user import User
-from src.infrastructure.db.models import EmployeeOrm, TeamOrm, PositionOrm, StatusHistoryOrm
 from src.infrastructure.db.models.user import UserOrm
 
 
@@ -21,11 +15,7 @@ class UserRepository:
             return None
         return User.model_validate(user_orm)
 
-
     async def create(self, user: User) -> User:
         insert_user_stmt = insert(UserOrm).values(**user.model_dump()).returning(UserOrm)
         user_orm: UserOrm = (await self._session.execute(insert_user_stmt)).scalar_one()
         return User.model_validate(user_orm)
-
-
-
