@@ -13,12 +13,13 @@ class Employee(BaseModel):
     first_name: str
     middle_name: str
     last_name: str
-    email: str
     birth_date: date
     hire_date: date
-    city: str
-    phone: str
-    mattermost: str
+    city: str | None = None
+    email: str
+    phone: str | None = None
+    mattermost: str | None = None
+    tg: str | None = None
     about_me: str | None = None
     position: Position | None = None
     team: Team | None = None

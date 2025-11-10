@@ -27,11 +27,12 @@ class EmployeeOrm(Base):
     middle_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     birth_date: Mapped[date] = mapped_column(Date, nullable=False)
-    email: Mapped[str] = mapped_column(String, nullable=False)
     hire_date: Mapped[date] = mapped_column(Date, nullable=False)
-    city: Mapped[str] = mapped_column(String, nullable=False)
-    phone: Mapped[str] = mapped_column(String, nullable=False)
-    mattermost: Mapped[str] = mapped_column(String, nullable=False)
+    city: Mapped[str] = mapped_column(String)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    phone: Mapped[str] = mapped_column(String)
+    mattermost: Mapped[str] = mapped_column(String)
+    tg: Mapped[str] = mapped_column(String)
     about_me: Mapped[str | None] = mapped_column(String)
 
     team_id: Mapped[UUID] = mapped_column(

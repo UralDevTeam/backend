@@ -106,6 +106,7 @@ class EmployeeRepository:
             city=employee_orm.city,
             phone=employee_orm.phone,
             mattermost=employee_orm.mattermost,
+            tg=employee_orm.tg,
             about_me=employee_orm.about_me,
             position=position,
             team=team,
