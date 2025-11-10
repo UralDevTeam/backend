@@ -31,8 +31,11 @@ class UserDTO(BaseModel):
     grade: str
     experience: int  # days
     status: str
-    city: str
-    contact: str
+    city: str | None = None
+    email: str
+    phone: str | None
+    mattermost: str | None
+    tg: str | None
     aboutMe: str
     isAdmin: bool
 
@@ -41,6 +44,7 @@ class UserUpdatePayload(BaseModel):
     city: Optional[str] = None
     phone: Optional[str] = None
     mattermost: Optional[str] = None
+    tg: Optional[str] = None
     about_me: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("aboutMe", "about_me"),
@@ -124,14 +128,6 @@ def _resolve_status(employee) -> str:
     return "active"
 
 
-def _resolve_contact(employee) -> str:
-    for attr in ("phone", "mattermost"):
-        value = getattr(employee, attr, "")
-        if value:
-            return value
-    return ""
-
-
 def _resolve_boss_id(employee) -> Optional[UUID]:
     team = getattr(employee, "team", None)
     if not team:
@@ -169,7 +165,10 @@ def _to_user_dto(employee, boss=None, *, is_admin: bool = False) -> UserDTO:
         experience=_resolve_experience(employee),
         status=_resolve_status(employee),
         city=getattr(employee, "city", "") or "",
-        contact=_resolve_contact(employee),
+        email=employee.email,
+        phone=employee.phone,
+        mattermost=employee.mattermost,
+        tg=employee.tg,
         aboutMe=getattr(employee, "about_me", "") or "",
         isAdmin=is_admin,
     )
