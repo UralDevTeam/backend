@@ -23,7 +23,7 @@ app.include_router(auth_router, prefix="/api", tags=["auth"])
 
 origins = [
     "http://localhost:3000",   # ваш фронтенд dev URL
-    # "https://your.production.frontend"  # production origin, если нужно
+    "https://udv-pi.vercel.app"  # production origin, если нужно
 ]
 
 app.add_middleware(
