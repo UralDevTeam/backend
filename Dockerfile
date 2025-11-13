@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq5 \
     dos2unix \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Переносим виртуальное окружение и код

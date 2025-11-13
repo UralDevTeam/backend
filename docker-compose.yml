@@ -14,17 +14,22 @@ services:
       LDAP_BASE_DN: "dc=example,dc=org"
       LDAP_TIMEOUT: "5"
       LDAP_TLS_VALIDATE: "true"
+
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: guest
       POSTGRES_USER: guest
       POSTGRES_PASSWORD: guest
+
       DATABASE_URL: postgresql+asyncpg://guest:guest@postgres:5432/guest
+
     command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
     ports:
       - "8000:8000"
+
     depends_on:
-      seed:
+      migrate:
         condition: service_completed_successfully
       openldap:
         condition: service_started
@@ -42,24 +47,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
-  seed:
-    image: postgres:17
-    environment:
-      PGPASSWORD: guest
-    volumes:
-      - ./src/res/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
-    # Use bash -ceu for reliable parsing; keep the whole script as one string
-    entrypoint: ["bash", "-ceu"]
-    command: >
-      'until pg_isready -h postgres -U guest -d guest; do sleep 1; done;
-      psql -v ON_ERROR_STOP=1 -h postgres -U guest -d guest
-      -f /docker-entrypoint-initdb.d/init-db.sql'
-    depends_on:
-      postgres:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
 
   postgres:
     image: postgres:17
