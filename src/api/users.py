@@ -39,6 +39,8 @@ class UserDTO(BaseModel):
     mattermost: str | None
     tg: str | None
     aboutMe: str
+    legalEntity: str | None = None
+    departament: str | None = None
     isAdmin: bool
 
 
@@ -213,6 +215,8 @@ def _to_user_dto(
         mattermost=employee.mattermost,
         tg=employee.tg,
         aboutMe=getattr(employee, "about_me", "") or "",
+        legalEntity=getattr(employee, "legal_entity", None),
+        departament=getattr(employee, "department", None),
         isAdmin=is_admin,
     )
 

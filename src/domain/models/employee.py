@@ -21,6 +21,8 @@ class Employee(BaseModel):
     mattermost: str | None = None
     tg: str | None = None
     about_me: str | None = None
+    legal_entity: str | None = None
+    department: str | None = None
     position: Position | None = None
     team: Team | None = None
     status_history: list[StatusHistory] = Field(default_factory=list)

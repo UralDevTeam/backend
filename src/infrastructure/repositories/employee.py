@@ -108,6 +108,8 @@ class EmployeeRepository:
             mattermost=employee_orm.mattermost,
             tg=employee_orm.tg,
             about_me=employee_orm.about_me,
+            legal_entity=getattr(employee_orm, "legal_entity", None),
+            department=getattr(employee_orm, "department", None),
             position=position,
             team=team,
             status_history=status_history,

@@ -34,6 +34,8 @@ class EmployeeOrm(Base):
     mattermost: Mapped[str] = mapped_column(String)
     tg: Mapped[str] = mapped_column(String)
     about_me: Mapped[str | None] = mapped_column(String)
+    legal_entity: Mapped[str | None] = mapped_column(String)
+    department: Mapped[str | None] = mapped_column(String)
 
     team_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False
