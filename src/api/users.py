@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import List, Optional, AsyncGenerator
+from typing import AsyncGenerator, Dict, List, Optional, Set
 from src.infrastructure.repositories.employee import EmployeeRepository
 from src.infrastructure.repositories.user import UserRepository
+from src.infrastructure.repositories.team import TeamRepository
 from src.infrastructure.db.base import async_session_factory
 from src.api.auth import get_current_user
+from src.domain.models import Team
 from src.domain.models.user import User
 
 router = APIRouter()
@@ -78,11 +80,34 @@ def _build_short_name(employee) -> str:
     return initials_part
 
 
-def _resolve_team(employee) -> List[str]:
+def _build_team_lookup(teams: List[Team]) -> Dict[UUID, Team]:
+    return {team.id: team for team in teams}
+
+
+def _collect_team_path(team: Team | None, team_lookup: Dict[UUID, Team]) -> List[Team]:
+    path: List[Team] = []
+    visited: Set[UUID] = set()
+    current = team
+    while current and current.id not in visited:
+        path.append(current)
+        visited.add(current.id)
+        if current.parent_id is None:
+            break
+        current = team_lookup.get(current.parent_id)
+    return path
+
+
+def _resolve_team(employee, team_lookup: Dict[UUID, Team]) -> List[str]:
     team = getattr(employee, "team", None)
-    if team and getattr(team, "name", None):
-        return [team.name]
-    return []
+    if not team:
+        return []
+
+    team_lookup.setdefault(team.id, team)
+    path = list(reversed(_collect_team_path(team, team_lookup)))
+    names = [node.name for node in path if getattr(node, "name", None)]
+    if len(names) > 1:
+        return names[1:]
+    return names
 
 
 def _resolve_role(employee) -> str:
@@ -128,15 +153,26 @@ def _resolve_status(employee) -> str:
     return "active"
 
 
-def _resolve_boss_id(employee) -> Optional[UUID]:
+def _resolve_boss_id(employee, team_lookup: Dict[UUID, Team]) -> Optional[UUID]:
     team = getattr(employee, "team", None)
     if not team:
         return None
-    leader_id = getattr(team, "leader_employee_id", None)
+
+    team_lookup.setdefault(team.id, team)
+    current = team
     employee_id = getattr(employee, "id", None)
-    if not leader_id or leader_id == employee_id:
-        return None
-    return leader_id
+    visited: Set[UUID] = set()
+
+    while current and current.id not in visited:
+        visited.add(current.id)
+        leader_id = getattr(current, "leader_employee_id", None)
+        if leader_id and leader_id != employee_id:
+            return leader_id
+        if current.parent_id is None:
+            break
+        current = team_lookup.get(current.parent_id)
+
+    return None
 
 
 def _build_boss_link(boss) -> Optional[UserLinkDTO]:
@@ -149,7 +185,14 @@ def _build_boss_link(boss) -> Optional[UserLinkDTO]:
     )
 
 
-def _to_user_dto(employee, boss=None, *, is_admin: bool = False) -> UserDTO:
+def _to_user_dto(
+        employee,
+        boss=None,
+        *,
+        is_admin: bool = False,
+        team_lookup: Dict[UUID, Team] | None = None,
+) -> UserDTO:
+    team_lookup = team_lookup or {}
     return UserDTO(
         id=str(getattr(employee, "id")),
         fio=_build_full_name(employee),
@@ -158,7 +201,7 @@ def _to_user_dto(employee, boss=None, *, is_admin: bool = False) -> UserDTO:
             if getattr(employee, "birth_date", None)
             else ""
         ),
-        team=_resolve_team(employee),
+        team=_resolve_team(employee, team_lookup),
         boss=_build_boss_link(boss),
         role=_resolve_role(employee),
         grade=_resolve_grade(employee),
@@ -189,7 +232,10 @@ def _ensure_access(user: User) -> None:
 async def get_users(db: AsyncSession = Depends(get_db)):
     repo = EmployeeRepository(db)
     user_repo = UserRepository(db)
+    team_repo = TeamRepository(db)
     employees = await repo.get_all()
+    teams = await team_repo.get_all()
+    team_lookup = _build_team_lookup(teams)
     employees_by_id = {employee.id: employee for employee in employees}
 
     def _sort_key(employee):
@@ -198,7 +244,7 @@ async def get_users(db: AsyncSession = Depends(get_db)):
     dtos: List[UserDTO] = []
     for employee in sorted(employees, key=_sort_key):
         boss = None
-        boss_id = _resolve_boss_id(employee)
+        boss_id = _resolve_boss_id(employee, team_lookup)
         if boss_id:
             boss = employees_by_id.get(boss_id)
         email = getattr(employee, "email", None)
@@ -206,7 +252,14 @@ async def get_users(db: AsyncSession = Depends(get_db)):
         if email:
             user = await user_repo.find_by_email(email)
         is_admin = bool(user and user.role == "admin")
-        dtos.append(_to_user_dto(employee, boss=boss, is_admin=is_admin))
+        dtos.append(
+            _to_user_dto(
+                employee,
+                boss=boss,
+                is_admin=is_admin,
+                team_lookup=team_lookup,
+            )
+        )
     return dtos
 
 
@@ -215,53 +268,73 @@ async def get_user_by_id(user_id: UUID, db: AsyncSession = Depends(get_db)):
     """Получить пользователя по ID из PostgreSQL"""
     repo = EmployeeRepository(db)
     user_repo = UserRepository(db)
+    team_repo = TeamRepository(db)
+    teams = await team_repo.get_all()
+    team_lookup = _build_team_lookup(teams)
     employee = await repo.get_by_id(user_id)
 
     if not employee:
         raise HTTPException(status_code=404, detail=f"User with id '{user_id}' not found")
 
     boss = None
-    boss_id = _resolve_boss_id(employee)
+    boss_id = _resolve_boss_id(employee, team_lookup)
     if boss_id:
         boss = await repo.get_by_id(boss_id)
 
     user = await user_repo.find_by_email(getattr(employee, "email", ""))
     is_admin = bool(user and user.role == "admin")
 
-    return _to_user_dto(employee, boss=boss, is_admin=is_admin)
+    return _to_user_dto(
+        employee,
+        boss=boss,
+        is_admin=is_admin,
+        team_lookup=team_lookup,
+    )
+
 
 @router.get("/me", response_model=UserDTO)
 async def get_me(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
 ):
     _ensure_access(current_user)
 
     repo = EmployeeRepository(db)
+    team_repo = TeamRepository(db)
+    teams = await team_repo.get_all()
+    team_lookup = _build_team_lookup(teams)
     employee = await repo.get_by_email(current_user.email)
 
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found for current user")
 
     boss = None
-    boss_id = _resolve_boss_id(employee)
+    boss_id = _resolve_boss_id(employee, team_lookup)
     if boss_id:
         boss = await repo.get_by_id(boss_id)
 
     is_admin = current_user.role == "admin"
 
-    return _to_user_dto(employee, boss=boss, is_admin=is_admin)
+    return _to_user_dto(
+        employee,
+        boss=boss,
+        is_admin=is_admin,
+        team_lookup=team_lookup,
+    )
 
 
 @router.put("/me", response_model=UserDTO)
 async def update_me(
-    payload: UserUpdatePayload,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+        payload: UserUpdatePayload,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
 ):
     _ensure_access(current_user)
 
     repo = EmployeeRepository(db)
+    team_repo = TeamRepository(db)
+    teams = await team_repo.get_all()
+    team_lookup = _build_team_lookup(teams)
     employee = await repo.get_by_email(current_user.email)
 
     if not employee:
@@ -274,10 +347,15 @@ async def update_me(
         await db.commit()
 
     boss = None
-    boss_id = _resolve_boss_id(employee)
+    boss_id = _resolve_boss_id(employee, team_lookup)
     if boss_id:
         boss = await repo.get_by_id(boss_id)
 
     is_admin = current_user.role == "admin"
 
-    return _to_user_dto(employee, boss=boss, is_admin=is_admin)
+    return _to_user_dto(
+        employee,
+        boss=boss,
+        is_admin=is_admin,
+        team_lookup=team_lookup,
+    )
