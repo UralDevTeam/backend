@@ -6,7 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 from src.api.ping import router as ping_router
 from src.api.users import router as users_router
 from src.api.auth import router as auth_router
-from src.services.ad_users import Store
+from src.application.services.ad_users import Store
 
 CSV_PATH = "src/res/test_users.csv"
 
