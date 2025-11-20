@@ -12,7 +12,7 @@ class Employee(BaseModel):
     id: UUID
     first_name: str
     middle_name: str
-    last_name: str
+    last_name: str | None
     birth_date: date
     hire_date: date
     city: str | None = None
@@ -23,8 +23,8 @@ class Employee(BaseModel):
     about_me: str | None = None
     legal_entity: str | None = None
     department: str | None = None
-    position: Position | None = None
-    team: Team | None = None
+    position: Position
+    team: Team
     status_history: list[StatusHistory] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True, extra="ignore")
