@@ -1,6 +1,7 @@
 from pydantic import BaseModel, AliasChoices, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Literal
 from uuid import UUID
+from datetime import date
 
 from src.domain.models import Employee, Team
 from src.domain.utils.user import (
@@ -13,6 +14,33 @@ from src.domain.utils.user import (
     resolve_team,
     resolve_boss_id
 )
+
+class EmployeeCreatePayload(BaseModel):
+    first_name: str
+    middle_name: str
+    last_name: str | None = None
+    birth_date: date
+    hire_date: date
+    city: str | None = None
+    phone: str | None = None
+    mattermost: str | None = None
+    tg: str | None = None
+    about_me: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("aboutMe", "about_me"),
+        serialization_alias="aboutMe",
+    )
+    legal_entity: str | None = None
+    department: str | None = None
+    position: str
+    team_id: UUID
+
+
+class UserCreatePayload(BaseModel):
+    email: str
+    password: str
+    role: Literal["admin", "user"] = "user"
+    employee: EmployeeCreatePayload
 
 class UserUpdatePayload(BaseModel):
     city: Optional[str] = None
