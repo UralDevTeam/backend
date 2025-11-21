@@ -50,7 +50,7 @@ class UserDTO(BaseModel):
     tg: str | None
     aboutMe: str
     legalEntity: str | None = None
-    departament: str | None = None
+    department: str | None = None
     isAdmin: bool
 
     @classmethod
@@ -86,6 +86,6 @@ class UserDTO(BaseModel):
             tg=employee.tg,
             aboutMe=employee.about_me or "",
             legalEntity=employee.legal_entity,
-            departament=employee.department,
+            department=employee.department,
             isAdmin=is_admin,
         )
