@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from src.services.ping_service import get_pong
+from src.application.services import get_pong
 
 router = APIRouter()
 
