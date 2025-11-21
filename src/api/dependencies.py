@@ -4,7 +4,12 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.db.base import async_session_factory
-from src.infrastructure.repositories import UserRepository, EmployeeRepository, TeamRepository
+from src.infrastructure.repositories import (
+    EmployeeRepository,
+    PositionRepository,
+    TeamRepository,
+    UserRepository,
+)
 from src.application.services import UserService
 
 
@@ -27,12 +32,17 @@ def get_employee_repository(session: AsyncSession = Depends(get_session)) -> Emp
     return EmployeeRepository(session)
 
 
+def get_position_repository(session: AsyncSession = Depends(get_session)) -> PositionRepository:
+    return PositionRepository(session)
+
+
 def get_team_repository(session: AsyncSession = Depends(get_session)) -> TeamRepository:
     return TeamRepository(session)
 
 def get_user_service(
     employee_repository: EmployeeRepository = Depends(get_employee_repository),
+    position_repository: PositionRepository = Depends(get_position_repository),
     user_repository: UserRepository = Depends(get_user_repository),
     team_repository: TeamRepository = Depends(get_team_repository)
 ) -> UserService:
-    return UserService(employee_repository, user_repository, team_repository)
+    return UserService(employee_repository, position_repository, user_repository, team_repository)
