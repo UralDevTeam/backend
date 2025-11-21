@@ -71,6 +71,7 @@ async def create_user(
             password_hash=hash_password(payload.password),
             role=payload.role,
             employee_payload=payload.employee.model_dump(),
+            creator=current_user,
         )
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))

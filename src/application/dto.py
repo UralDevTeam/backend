@@ -33,7 +33,7 @@ class EmployeeCreatePayload(BaseModel):
     legal_entity: str | None = None
     department: str | None = None
     position: str
-    team_id: UUID
+    team: str
 
 
 class UserCreatePayload(BaseModel):

@@ -29,7 +29,7 @@ class EmployeeCreationData(TypedDict):
     legal_entity: str | None
     department: str | None
     position: str
-    team_id: UUID
+    team: str
 
 class UserService:
     def __init__(self, employee_repo: EmployeeRepository, position_repo: PositionRepository, user_repo: UserRepository, team_repo: TeamRepository):
@@ -117,14 +117,14 @@ class UserService:
             team_lookup=team_lookup,
         )
 
-
     async def create_user(
-        self,
-        *,
-        email: str,
-        password_hash: str,
-        role: Literal["admin", "user"],
-        employee_payload: EmployeeCreationData,
+            self,
+            *,
+            email: str,
+            password_hash: str,
+            role: Literal["admin", "user"],
+            employee_payload: EmployeeCreationData,
+            creator: User,
     ) -> UserDTO:
         if await self.user_repo.find_by_email(email):
             raise ValueError("User already registered")
@@ -136,8 +136,21 @@ class UserService:
 
         employee_data = employee_payload.copy()
         position_title = employee_data.pop("position")
+        team_name = employee_data.pop("team")
 
         position = await self.position_repo.get_or_create(title=position_title)
+
+        team = await self.team_repo.get_by_name(team_name)
+        if not team:
+            creator_employee = await self.employee_repo.get_by_email(creator.email)
+            if not creator_employee:
+                raise ValueError("Creator employee record not found")
+
+            team = await self.team_repo.create(
+                name=team_name,
+                leader_employee_id=creator_employee.id,
+                parent_id=None,
+            )
 
         employee_id = uuid7()
 
@@ -147,6 +160,7 @@ class UserService:
                 "id": employee_id,
                 "email": email,
                 "position_id": position.id,
+                "team_id": team.id,
             }
         )
 
