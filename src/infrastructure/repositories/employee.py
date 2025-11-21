@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import Any, Optional, Sequence
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -61,6 +61,22 @@ class EmployeeRepository:
         result = await self._session.execute(stmt)
         employee_orms: Sequence[EmployeeOrm] = result.scalars().all()
         return [self._to_domain(employee_orm) for employee_orm in employee_orms]
+
+    async def create(self, data: dict[str, Any]) -> Employee:
+        stmt = (
+            insert(EmployeeOrm)
+            .values(**data)
+            .returning(EmployeeOrm)
+        )
+
+        employee_orm: EmployeeOrm = (await self._session.execute(stmt)).scalar_one()
+        await self._session.flush()
+
+        employee = await self.get_by_id(employee_orm.id)
+        if not employee:
+            raise ValueError("Created employee record could not be fetched")
+
+        return employee
 
     async def update_partial(self, id: UUID, data: dict[str, Any]) -> Employee:
         if not data:
