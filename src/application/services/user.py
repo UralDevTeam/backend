@@ -15,6 +15,7 @@ from src.utils.user import (
     build_team_lookup, resolve_boss_id
 )
 
+
 class EmployeeCreationData(TypedDict):
     first_name: str
     middle_name: str
@@ -31,8 +32,10 @@ class EmployeeCreationData(TypedDict):
     position: str
     team: str
 
+
 class UserService:
-    def __init__(self, employee_repo: EmployeeRepository, position_repo: PositionRepository, user_repo: UserRepository, team_repo: TeamRepository):
+    def __init__(self, employee_repo: EmployeeRepository, position_repo: PositionRepository, user_repo: UserRepository,
+                 team_repo: TeamRepository):
         self.employee_repo = employee_repo
         self.position_repo = position_repo
         self.user_repo = user_repo
@@ -114,6 +117,31 @@ class UserService:
             emp,
             boss=boss,
             is_admin=(current_user.role == "admin"),
+            team_lookup=team_lookup,
+        )
+
+    async def update_user(self, user_id: UUID, payload: UserUpdatePayload) -> UserDTO | None:
+        update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
+
+        employee = await self.employee_repo.get_by_id(user_id)
+        if not employee:
+            return None
+
+        if update_data:
+            employee = await self.employee_repo.update_partial(user_id, update_data)
+
+        teams = await self.team_repo.get_all()
+        team_lookup = build_team_lookup(teams)
+        boss_id = resolve_boss_id(employee, team_lookup)
+        boss = await self.employee_repo.get_by_id(boss_id) if boss_id else None
+
+        user = await self.user_repo.find_by_email(employee.email)
+        is_admin = bool(user and user.role == "admin")
+
+        return UserDTO.from_employee(
+            employee,
+            boss=boss,
+            is_admin=is_admin,
             team_lookup=team_lookup,
         )
 

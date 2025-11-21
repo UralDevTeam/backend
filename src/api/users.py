@@ -9,6 +9,7 @@ from src.application.services import UserService
 
 router = APIRouter()
 
+
 @router.get("/users", response_model=list[UserDTO])
 async def get_users(
         user_service: UserService = Depends(get_user_service),
@@ -56,11 +57,30 @@ async def update_me(
 
     return user
 
+
+@router.put("/users/{user_id}", response_model=UserDTO)
+async def update_user(
+        user_id: UUID,
+        payload: UserUpdatePayload,
+        current_user: User = Depends(get_current_user),
+        user_service: UserService = Depends(get_user_service),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    user = await user_service.update_user(user_id, payload)
+
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with id '{user_id}' not found")
+
+    return user
+
+
 @router.post("/user", response_model=UserDTO, status_code=status.HTTP_201_CREATED)
 async def create_user(
-    payload: UserCreatePayload,
-    current_user: User = Depends(get_current_user),
-    user_service: UserService = Depends(get_user_service),
+        payload: UserCreatePayload,
+        current_user: User = Depends(get_current_user),
+        user_service: UserService = Depends(get_user_service),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
