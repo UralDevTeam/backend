@@ -5,7 +5,7 @@ from uuid import UUID
 
 from uuid6 import uuid7
 
-from src.application.dto import UserDTO, UserUpdatePayload
+from src.application.dto import AdminUserUpdatePayload, UserDTO, UserUpdatePayload
 from src.domain.models import User
 from src.infrastructure.repositories.position import PositionRepository
 from src.infrastructure.repositories.employee import EmployeeRepository
@@ -120,28 +120,59 @@ class UserService:
             team_lookup=team_lookup,
         )
 
-    async def update_user(self, user_id: UUID, payload: UserUpdatePayload) -> UserDTO | None:
+    async def update_user(self, user_id: UUID, payload: AdminUserUpdatePayload) -> UserDTO | None:
         update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
 
         employee = await self.employee_repo.get_by_id(user_id)
         if not employee:
             return None
 
+        original_email = employee.email
+
+        position_title = update_data.pop("position", None)
+        team_name = update_data.pop("team", None)
+        is_admin = update_data.pop("is_admin", None)
+
+        if position_title:
+            position = await self.position_repo.get_or_create(title=position_title)
+            update_data["position_id"] = position.id
+
+        if team_name:
+            team = await self.team_repo.get_by_name(team_name)
+            if not team:
+                raise ValueError(f"Team '{team_name}' not found")
+            update_data["team_id"] = team.id
+
         if update_data:
             employee = await self.employee_repo.update_partial(user_id, update_data)
+
+        user = await self.user_repo.find_by_email(original_email)
+        updated_user = user
+
+        user_update_data = {}
+        if is_admin is not None:
+            user_update_data["role"] = "admin" if is_admin else "user"
+
+        if "email" in update_data:
+            user_update_data["email"] = update_data["email"]
+
+        if user_update_data:
+            if user:
+                updated_user = await self.user_repo.update_by_email(original_email, user_update_data)
+            else:
+                raise ValueError("User account not found for employee to update access")
 
         teams = await self.team_repo.get_all()
         team_lookup = build_team_lookup(teams)
         boss_id = resolve_boss_id(employee, team_lookup)
         boss = await self.employee_repo.get_by_id(boss_id) if boss_id else None
 
-        user = await self.user_repo.find_by_email(employee.email)
-        is_admin = bool(user and user.role == "admin")
+        is_admin_flag = bool(updated_user and updated_user.role == "admin")
 
         return UserDTO.from_employee(
             employee,
             boss=boss,
-            is_admin=is_admin,
+            is_admin=is_admin_flag,
             team_lookup=team_lookup,
         )
 

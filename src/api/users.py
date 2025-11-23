@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.api.dependencies import get_user_service
 from src.api.auth import get_current_user, hash_password
-from src.application.dto import UserDTO, UserUpdatePayload, UserCreatePayload
+from src.application.dto import AdminUserUpdatePayload, UserDTO, UserUpdatePayload, UserCreatePayload
 from src.domain.models.user import User
 from src.application.services import UserService
 
@@ -61,14 +61,17 @@ async def update_me(
 @router.put("/users/{user_id}", response_model=UserDTO)
 async def update_user(
         user_id: UUID,
-        payload: UserUpdatePayload,
+        payload: AdminUserUpdatePayload,
         current_user: User = Depends(get_current_user),
         user_service: UserService = Depends(get_user_service),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
-    user = await user_service.update_user(user_id, payload)
+    try:
+        user = await user_service.update_user(user_id, payload)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
     if not user:
         raise HTTPException(status_code=404, detail=f"User with id '{user_id}' not found")

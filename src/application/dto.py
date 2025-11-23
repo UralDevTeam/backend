@@ -15,6 +15,8 @@ from src.domain.utils.user import (
     resolve_boss_id
 )
 
+
+
 class EmployeeCreatePayload(BaseModel):
     first_name: str
     middle_name: str
@@ -54,6 +56,23 @@ class UserUpdatePayload(BaseModel):
     )
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+class AdminUserUpdatePayload(UserUpdatePayload):
+    first_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    last_name: Optional[str] = None
+    birth_date: Optional[date] = None
+    hire_date: Optional[date] = None
+    email: Optional[str] = None
+    legal_entity: Optional[str] = None
+    department: Optional[str] = None
+    position: Optional[str] = None
+    team: Optional[str] = None
+    is_admin: Optional[bool] = Field(
+        default=None,
+        validation_alias=AliasChoices("isAdmin", "is_admin"),
+        serialization_alias="isAdmin",
+    )
 
 class UserLinkDTO(BaseModel):
     id: str
