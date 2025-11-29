@@ -138,7 +138,7 @@ class UserService:
             update_data["position_id"] = position.id
 
         if team_name:
-            team = await self.team_repo.get_by_name(team_name)
+            team = await self.team_repo.find_by_name(team_name)
             if not team:
                 raise ValueError(f"Team '{team_name}' not found")
             update_data["team_id"] = team.id
@@ -199,7 +199,7 @@ class UserService:
 
         position = await self.position_repo.get_or_create(title=position_title)
 
-        team = await self.team_repo.get_by_name(team_name)
+        team = await self.team_repo.find_by_name(team_name)
         if not team:
             creator_employee = await self.employee_repo.get_by_email(creator.email)
             if not creator_employee:

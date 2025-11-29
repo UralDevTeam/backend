@@ -20,7 +20,7 @@ class TeamRepository:
         teams: Sequence[TeamOrm] = result.scalars().all()
         return [Team.model_validate(team) for team in teams]
 
-    async def get_by_name(self, name: str) -> Optional[Team]:
+    async def find_by_name(self, name: str) -> Optional[Team]:
         stmt = select(TeamOrm).where(TeamOrm.name == name)
         team = (await self._session.execute(stmt)).scalar_one_or_none()
 
