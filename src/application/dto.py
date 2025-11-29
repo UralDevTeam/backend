@@ -1,6 +1,7 @@
 from pydantic import BaseModel, AliasChoices, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Literal
 from uuid import UUID
+from datetime import date
 
 from src.domain.models import Employee, Team
 from src.domain.utils.user import (
@@ -14,6 +15,35 @@ from src.domain.utils.user import (
     resolve_boss_id
 )
 
+
+
+class EmployeeCreatePayload(BaseModel):
+    first_name: str
+    middle_name: str
+    last_name: str | None = None
+    birth_date: date
+    hire_date: date
+    city: str | None = None
+    phone: str | None = None
+    mattermost: str | None = None
+    tg: str | None = None
+    about_me: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("aboutMe", "about_me"),
+        serialization_alias="aboutMe",
+    )
+    legal_entity: str | None = None
+    department: str | None = None
+    position: str
+    team: str
+
+
+class UserCreatePayload(BaseModel):
+    email: str
+    password: str
+    role: Literal["admin", "user"] = "user"
+    employee: EmployeeCreatePayload
+
 class UserUpdatePayload(BaseModel):
     city: Optional[str] = None
     phone: Optional[str] = None
@@ -26,6 +56,23 @@ class UserUpdatePayload(BaseModel):
     )
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+class AdminUserUpdatePayload(UserUpdatePayload):
+    first_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    last_name: Optional[str] = None
+    birth_date: Optional[date] = None
+    hire_date: Optional[date] = None
+    email: Optional[str] = None
+    legal_entity: Optional[str] = None
+    department: Optional[str] = None
+    position: Optional[str] = None
+    team: Optional[str] = None
+    is_admin: Optional[bool] = Field(
+        default=None,
+        validation_alias=AliasChoices("isAdmin", "is_admin"),
+        serialization_alias="isAdmin",
+    )
 
 class UserLinkDTO(BaseModel):
     id: str
