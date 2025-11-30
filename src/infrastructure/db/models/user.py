@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING
 from uuid import UUID
 from uuid6 import uuid7
 
-from sqlalchemy import String, ForeignKey, VARCHAR
+from sqlalchemy import String, ForeignKey, VARCHAR, DateTime, INTEGER
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
@@ -20,3 +20,4 @@ class UserOrm(Base):
     email: Mapped[str] = mapped_column(VARCHAR(255))
     password_hash: Mapped[str] = mapped_column(VARCHAR(255))
     role: Mapped[str] = mapped_column(VARCHAR(255))
+    password_changed_at_ts: Mapped[int] = mapped_column(INTEGER, nullable=True)

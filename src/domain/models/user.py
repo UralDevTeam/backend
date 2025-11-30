@@ -9,5 +9,6 @@ class User(BaseModel):
     email: str
     password_hash: str
     role: Literal["admin", "user"]
+    password_changed_at_ts: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
