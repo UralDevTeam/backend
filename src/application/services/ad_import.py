@@ -40,6 +40,7 @@ class AdImportService:
 
         team_lookup = {team.name: team for team in teams}
         default_team = teams[0]
+        default_leader_id = default_team.leader_employee_id
 
         imported = 0
 
@@ -51,7 +52,13 @@ class AdImportService:
             if mapped["object_id"] in existing_object_ids:
                 continue
 
-            team = team_lookup.get(mapped["department"]) or default_team
+            team = team_lookup.get(mapped["department"]) or await self.team_repo.get_or_create(
+                name=mapped["department"] or default_team.name,
+                leader_employee_id=default_leader_id,
+                parent_id=None,
+            )
+
+            team_lookup[team.name] = team
             position = await self.position_repo.get_or_create(title=mapped["position"])
 
             await self.employee_repo.create(
