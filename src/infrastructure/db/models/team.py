@@ -28,7 +28,6 @@ class TeamOrm(Base):
 
     leader_employee_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False
-        , unique=True
     )
 
     parent: Mapped[Optional["TeamOrm"]] = relationship(
