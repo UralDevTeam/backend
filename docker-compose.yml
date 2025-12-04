@@ -4,10 +4,6 @@ services:
     container_name: fastapi-ldap-app
     env_file:
       - .env
-
-    environment:
-      DATABASE_URL: postgresql+asyncpg://guest:guest@postgres:5432/guest
-
     command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
     ports:
@@ -23,9 +19,6 @@ services:
     build: .
     env_file:
       - .env
-
-    environment:
-      DATABASE_URL: postgresql+asyncpg://guest:guest@postgres:5432/guest
     command: ["alembic", "upgrade", "head"]
     depends_on:
       postgres:
