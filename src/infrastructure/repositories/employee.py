@@ -52,6 +52,30 @@ class EmployeeRepository:
 
         return self._to_domain(employee_orm)
 
+    async def get_by_object_id(self, object_id: str) -> Optional[Employee]:
+        stmt = (
+            select(EmployeeOrm)
+            .where(EmployeeOrm.object_id == object_id)
+            .options(
+                selectinload(EmployeeOrm.team),
+                selectinload(EmployeeOrm.position),
+                selectinload(EmployeeOrm.status_history),
+            )
+        )
+
+        result = await self._session.execute(stmt)
+        employee_orm: EmployeeOrm | None = result.scalar_one_or_none()
+
+        if not employee_orm:
+            return None
+
+        return self._to_domain(employee_orm)
+
+    async def get_object_ids(self) -> set[str]:
+        stmt = select(EmployeeOrm.object_id).where(EmployeeOrm.object_id.is_not(None))
+        result = await self._session.execute(stmt)
+        return {row[0] for row in result.all() if row[0] is not None}
+
     async def get_all(self) -> list[Employee]:
         stmt = select(EmployeeOrm).options(
             selectinload(EmployeeOrm.team),
@@ -126,6 +150,7 @@ class EmployeeRepository:
             about_me=employee_orm.about_me,
             legal_entity=getattr(employee_orm, "legal_entity", None),
             department=getattr(employee_orm, "department", None),
+            object_id=getattr(employee_orm, "object_id", None),
             position=position,
             team=team,
             status_history=status_history,

@@ -27,9 +27,20 @@ class PostgresSettings(BaseSettings):
             ),
         )
 
+
+class ActiveDirectorySettings(BaseSettings):
+    host: str = "10.51.4.16"
+    port: int = 389
+    use_ssl: bool = False
+    user: Optional[str] = None
+    password: Optional[SecretStr] = None
+    base_dn: str = "DC=stud,DC=local"
+    page_size: int = 1000
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_nested_delimiter="__", env_file=ENV_FILE)
     postgres: PostgresSettings
+    ad: ActiveDirectorySettings = Field(default_factory=ActiveDirectorySettings)
 
 
 settings = Settings()
