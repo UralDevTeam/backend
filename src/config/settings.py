@@ -29,12 +29,12 @@ class PostgresSettings(BaseSettings):
 
 
 class ActiveDirectorySettings(BaseSettings):
-    host: str = "10.51.4.16"
+    host: str
     port: int = 389
     use_ssl: bool = False
     user: Optional[str] = None
     password: Optional[SecretStr] = None
-    base_dn: str = "DC=stud,DC=local"
+    base_dn: str
     page_size: int = 1000
 
 class Settings(BaseSettings):

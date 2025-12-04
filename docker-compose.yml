@@ -2,23 +2,10 @@ services:
   app:
     build: .
     container_name: fastapi-ldap-app
+    env_file:
+      - .env
+
     environment:
-      LDAP_HOST: openldap
-      LDAP_PORT: 389
-      LDAP_SSL: "false"
-      LDAP_STARTTLS: "false"
-      LDAP_BIND_DN: "cn=admin,dc=example,dc=org"
-      LDAP_BIND_PASSWORD: "admin"
-      LDAP_BASE_DN: "dc=example,dc=org"
-      LDAP_TIMEOUT: "5"
-      LDAP_TLS_VALIDATE: "true"
-
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: guest
-      POSTGRES_USER: guest
-      POSTGRES_PASSWORD: guest
-
       DATABASE_URL: postgresql+asyncpg://guest:guest@postgres:5432/guest
 
     command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -34,12 +21,10 @@ services:
 
   migrate:
     build: .
+    env_file:
+      - .env
+
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: guest
-      POSTGRES_USER: guest
-      POSTGRES_PASSWORD: guest
       DATABASE_URL: postgresql+asyncpg://guest:guest@postgres:5432/guest
     command: ["alembic", "upgrade", "head"]
     depends_on:

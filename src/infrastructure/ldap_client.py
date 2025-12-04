@@ -21,13 +21,12 @@ class LdapClient:
         bind_password: Optional[str] = None,
         base_dn: str = "",
         timeout: int = 5,
-        tls_validate: bool = True,
     ):
         self.base_dn = base_dn
         tls = None
         if use_ssl or start_tls:
             tls = Tls(
-                validate=ssl.CERT_REQUIRED if tls_validate else ssl.CERT_NONE,
+                validate=ssl.CERT_NONE,
                 version=ssl.PROTOCOL_TLS_CLIENT,
             )
         self.server = Server(
@@ -133,7 +132,6 @@ def from_env() -> LdapClient:
     bind_password = os.getenv("LDAP_BIND_PASSWORD")
     base_dn = os.getenv("LDAP_BASE_DN", "dc=example,dc=org")
     timeout = int(os.getenv("LDAP_TIMEOUT", "5"))
-    tls_validate = os.getenv("LDAP_TLS_VALIDATE", "true").lower() == "true"
 
     return LdapClient(
         host=host,
@@ -144,5 +142,4 @@ def from_env() -> LdapClient:
         bind_password=bind_password,
         base_dn=base_dn,
         timeout=timeout,
-        tls_validate=tls_validate,
     )
