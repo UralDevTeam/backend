@@ -9,8 +9,9 @@ from src.infrastructure.repositories import (
     PositionRepository,
     TeamRepository,
     UserRepository,
+    AvatarRepository,
 )
-from src.application.services import AdImportService, UserService
+from src.application.services import AdImportService, AvatarService, UserService
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -39,13 +40,24 @@ def get_position_repository(session: AsyncSession = Depends(get_session)) -> Pos
 def get_team_repository(session: AsyncSession = Depends(get_session)) -> TeamRepository:
     return TeamRepository(session)
 
+
+def get_avatar_repository(session: AsyncSession = Depends(get_session)) -> AvatarRepository:
+    return AvatarRepository(session)
+
+
 def get_user_service(
     employee_repository: EmployeeRepository = Depends(get_employee_repository),
     position_repository: PositionRepository = Depends(get_position_repository),
     user_repository: UserRepository = Depends(get_user_repository),
-    team_repository: TeamRepository = Depends(get_team_repository)
+    team_repository: TeamRepository = Depends(get_team_repository),
 ) -> UserService:
     return UserService(employee_repository, position_repository, user_repository, team_repository)
+
+
+def get_avatar_service(
+    avatar_repository: AvatarRepository = Depends(get_avatar_repository),
+) -> AvatarService:
+    return AvatarService(avatar_repository)
 
 
 def get_ad_import_service(

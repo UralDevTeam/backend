@@ -1,11 +1,17 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.dependencies import get_user_service
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+
+from src.api.dependencies import (
+    get_avatar_service,
+    get_employee_repository,
+    get_user_service,
+)
 from src.api.auth import get_current_user, hash_password
 from src.application.dto import AdminUserUpdatePayload, UserDTO, UserUpdatePayload, UserCreatePayload
+from src.application.services import AvatarService, UserService
 from src.domain.models.user import User
-from src.application.services import UserService
+from src.infrastructure.repositories import EmployeeRepository
 
 router = APIRouter()
 
@@ -100,3 +106,53 @@ async def create_user(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
     return created_user
+
+
+@router.post("/users/{user_id}/avatar", status_code=status.HTTP_201_CREATED)
+async def upload_avatar(
+        user_id: UUID,
+        file: UploadFile = File(...),
+        current_user: User = Depends(get_current_user),
+        avatar_service: AvatarService = Depends(get_avatar_service),
+        employee_repository: EmployeeRepository = Depends(get_employee_repository),
+):
+    target_employee = await employee_repository.get_by_id(user_id)
+    if not target_employee:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id '{user_id}' not found")
+
+    if current_user.role != "admin":
+        current_employee = await employee_repository.get_by_email(current_user.email)
+        if not current_employee or current_employee.id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot upload avatar for this user")
+
+    content = await file.read()
+    try:
+        await avatar_service.save_avatar(user_id, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return {"detail": "Avatar uploaded"}
+
+
+@router.get("/users/{user_id}/avatar/large")
+async def get_large_avatar(
+        user_id: UUID,
+        avatar_service: AvatarService = Depends(get_avatar_service),
+):
+    avatar = await avatar_service.get_avatar(user_id)
+    if not avatar:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Avatar for user '{user_id}' not found")
+
+    return Response(content=avatar.image_large, media_type=avatar.mime_type)
+
+
+@router.get("/users/{user_id}/avatar/small")
+async def get_small_avatar(
+        user_id: UUID,
+        avatar_service: AvatarService = Depends(get_avatar_service),
+):
+    avatar = await avatar_service.get_avatar(user_id)
+    if not avatar:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Avatar for user '{user_id}' not found")
+
+    return Response(content=avatar.image_small, media_type=avatar.mime_type)
