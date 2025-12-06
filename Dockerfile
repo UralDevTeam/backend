@@ -2,9 +2,7 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
 WORKDIR /src
 
 COPY pyproject.toml uv.lock ./
-# Use the unlocked sync so newly added dependencies (e.g., Pillow for avatar
-# processing) are pulled even if the lockfile hasn't been refreshed locally.
-RUN uv sync --no-dev --no-install-project
+RUN uv sync --no-dev --frozen --no-install-project
 
 COPY . .
 
@@ -18,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq5 \
     dos2unix \
+    python3-pil \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
