@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 from typing import Dict, List, Optional, Any
-from ldap3 import Server, Connection, Tls, ALL, SUBTREE, ALL_ATTRIBUTES, MODIFY_REPLACE
+from ldap3 import Server, Connection, Tls, ALL, SUBTREE, ALL_ATTRIBUTES, MODIFY_REPLACE, SIMPLE
 import ssl
 
 
@@ -37,7 +37,8 @@ class LdapClient:
             user=bind_dn,
             password=bind_password,
             receive_timeout=timeout,
-            auto_bind=False,
+            authentication=SIMPLE,
+            auto_bind=True,
         )
         if start_tls and not use_ssl:
             if not self.conn.start_tls():
