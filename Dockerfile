@@ -2,11 +2,13 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
 WORKDIR /src
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+# Use the unlocked sync so newly added dependencies (e.g., Pillow for avatar
+# processing) are pulled even if the lockfile hasn't been refreshed locally.
+RUN uv sync --no-dev --no-install-project
 
 COPY . .
 
-RUN uv sync --frozen --no-dev
+RUN uv sync --no-dev
 
 FROM python:3.12-slim
 WORKDIR /src
