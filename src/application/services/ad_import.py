@@ -58,7 +58,7 @@ class AdImportService:
             company_team = await self._get_or_create_team(
                 name=legal_entity_name,
                 leader_employee_id=default_leader_id,
-                parent_id=None,
+                parent_id=default_team.id,
                 lookup=team_lookup,
             )
 
