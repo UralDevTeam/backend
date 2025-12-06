@@ -13,6 +13,7 @@ class Employee(BaseModel):
     first_name: str
     middle_name: str
     last_name: str | None
+    object_id: str | None = None
     birth_date: date
     hire_date: date
     city: str | None = None

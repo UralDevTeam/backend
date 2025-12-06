@@ -26,6 +26,7 @@ class EmployeeOrm(Base):
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     middle_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=True)
+    object_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     birth_date: Mapped[date] = mapped_column(Date, nullable=False)
     hire_date: Mapped[date] = mapped_column(Date, nullable=False)
     city: Mapped[str] = mapped_column(String, nullable=True)

@@ -10,7 +10,7 @@ from src.infrastructure.repositories import (
     TeamRepository,
     UserRepository,
 )
-from src.application.services import UserService
+from src.application.services import AdImportService, UserService
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -46,3 +46,11 @@ def get_user_service(
     team_repository: TeamRepository = Depends(get_team_repository)
 ) -> UserService:
     return UserService(employee_repository, position_repository, user_repository, team_repository)
+
+
+def get_ad_import_service(
+    employee_repository: EmployeeRepository = Depends(get_employee_repository),
+    position_repository: PositionRepository = Depends(get_position_repository),
+    team_repository: TeamRepository = Depends(get_team_repository),
+) -> AdImportService:
+    return AdImportService(employee_repository, position_repository, team_repository)

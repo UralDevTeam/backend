@@ -29,6 +29,17 @@ class TeamRepository:
 
         return Team.model_validate(team)
 
+    async def get_or_create(
+        self, *, name: str, leader_employee_id: UUID, parent_id: UUID | None
+    ) -> Team:
+        existing = await self.find_by_name(name)
+        if existing:
+            return existing
+
+        return await self.create(
+            name=name, leader_employee_id=leader_employee_id, parent_id=parent_id
+        )
+
     async def create(
             self, *, name: str, leader_employee_id: UUID, parent_id: UUID | None
     ) -> Team:
