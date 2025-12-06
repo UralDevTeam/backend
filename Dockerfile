@@ -16,8 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libpq5 \
     dos2unix \
-    python3-pil \
-    python3-multipart \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
@@ -28,8 +26,7 @@ COPY docker/entrypoint.sh /entrypoint.sh
 RUN dos2unix /entrypoint.sh || true
 
 ENV VIRTUAL_ENV=/opt/venv \
-    PATH="/opt/venv/bin:${PATH}" \
-    PYTHONPATH="/usr/lib/python3/dist-packages:${PYTHONPATH}"
+    PATH="/opt/venv/bin:${PATH}"
 
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /src

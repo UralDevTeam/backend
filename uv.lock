@@ -472,6 +472,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pillow"
+version = "10.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/11/9a7d2f60ac44d4a8a3c6d53295d85f1e4b74c6a1fde37d399a8ce28ed89c/Pillow-10.4.0.tar.gz", hash = "sha256:1f3f258f18f53128dca28dfc17d74b68597d3257016e46b859e56cfa1f7c5d4f", size = 71158504, upload-time = "2024-07-01T18:57:09.407Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b8/08/7d0cfe7a9b79b1248cf78a2af36fdb46c466ded0d48c54832c8d9b15b0c7/Pillow-10.4.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:13b5f0011a78b12fb0c36eaa7ca5c7e1098693f5659f47eec92e532d23d5fbc2", size = 31420944, upload-time = "2024-07-01T19:32:34.062Z" },
+]
+
+[[package]]
 name = "pyasn1"
 version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -602,6 +611,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c6/77/3a1c9039db7124eb039772b935f2244fbb73fc8ee65b9acf2375da1c07bf/python_jose-3.5.0.tar.gz", hash = "sha256:fb4eaa44dbeb1c26dcc69e4bd7ec54a1cb8dd64d3b4d81ef08d90ff453f2b01b", size = 92726, upload-time = "2025-05-28T17:31:54.288Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/c3/0bd11992072e6a1c513b16500a5d07f91a24017c5909b02c72c62d7ad024/python_jose-3.5.0-py2.py3-none-any.whl", hash = "sha256:abd1202f23d34dfad2c3d28cb8617b90acf34132c7afd60abd0b0b7d3cb55771", size = 34624, upload-time = "2025-05-28T17:31:52.802Z" },
+]
+
+[[package]]
+name = "python-multipart"
+version = "0.0.9"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/f9/7940a944208dbaf44354895dbc1b14eb38f02c8ef2c2f8a0b0bd3dda9cca/python-multipart-0.0.9.tar.gz", hash = "sha256:c720caa9dce3a05c927d6ad0da5fa903262bfe34f21d2914fc293a7a9bc17b54", size = 31600, upload-time = "2015-05-16T10:52:18.363Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/bc/02ab60191d3c1c4c9b8b87b84d888fffbe671c5f3cf1911091cf07e843f/python_multipart-0.0.9-py3-none-any.whl", hash = "sha256:5c570ba6fc8c29c783fda203ab7a9336fe045c7a8bb44d9b39988772f9d0e6df", size = 36971, upload-time = "2015-05-16T10:52:14.378Z" },
 ]
 
 [[package]]
