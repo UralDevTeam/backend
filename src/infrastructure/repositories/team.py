@@ -1,7 +1,7 @@
 from typing import Sequence, Optional
 from uuid import UUID
 
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.models import Team
@@ -46,6 +46,19 @@ class TeamRepository:
         stmt = (
             insert(TeamOrm)
             .values(name=name, leader_employee_id=leader_employee_id, parent_id=parent_id)
+            .returning(TeamOrm)
+        )
+
+        team = (await self._session.execute(stmt)).scalar_one()
+        await self._session.flush()
+
+        return Team.model_validate(team)
+
+    async def update_parent(self, team_id: UUID, parent_id: UUID | None) -> Team:
+        stmt = (
+            update(TeamOrm)
+            .where(TeamOrm.id == team_id)
+            .values(parent_id=parent_id)
             .returning(TeamOrm)
         )
 

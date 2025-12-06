@@ -1,21 +1,17 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
-from uuid6 import uuid7
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+from pydantic import BaseModel
+from uuid6 import uuid7
 
 from src.api.dependencies import get_user_repository
 from src.domain.models.user import User
 from src.infrastructure.repositories import UserRepository
-
-# =====================================
-# Конфиг
-# =====================================
 
 router = APIRouter()
 
@@ -25,15 +21,10 @@ pwd = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 Role = Literal["admin", "user"]
 
-# JWT настройки
 SECRET_KEY = "super-secret-key-change-me"  # брать из env
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 8 * 60
 
-
-# =====================================
-# Модели и утилиты
-# =====================================
 
 def hash_password(p: str) -> str:
     return pwd.hash(p)
@@ -57,23 +48,19 @@ class UserOut(BaseModel):
 
 class Token(BaseModel):
     access_token: str
-    token_type: str  # "bearer"
+    token_type: str
 
 
 class TokenPayload(BaseModel):
-    sub: str | None = None  # сюда кладём user_id (UUID в строке)
-    exp: int | None = None  # unix timestamp истечения
-    iat: int | None = None  # unix timestamp выдачи
+    sub: str | None = None
+    exp: int | None = None
+    iat: int | None = None
 
 
 class PasswordChangeIn(BaseModel):
     old_password: str
     new_password: str
 
-
-# =====================================
-# JWT утилита
-# =====================================
 
 def create_access_token(subject: str, issued_at: int, expires_delta: int) -> str:
     """
@@ -90,10 +77,6 @@ def create_access_token(subject: str, issued_at: int, expires_delta: int) -> str
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-
-# =====================================
-# Зависимость: текущий пользователь по JWT
-# =====================================
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
@@ -128,14 +111,9 @@ async def get_current_user(
     if not user:
         raise credentials_exception
 
-    # ревокация: если пароль менялся после выдачи токена — токен инвалиден
     if getattr(user, "password_changed_at", None) and token_data.iat is not None:
         token_iat_dt = datetime.fromtimestamp(token_data.iat, tz=timezone.utc)
-        print(getattr(user, "password_changed_at", None))
-        print("Хуй")
-        print(token_iat_dt)
-        print("Хуй")
-        if token_iat_dt < user.password_changed_at:  # type: ignore[operator]
+        if token_iat_dt < user.password_changed_at:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token revoked (password changed)",
@@ -144,10 +122,6 @@ async def get_current_user(
 
     return user
 
-
-# =====================================
-# Ручки
-# =====================================
 
 @router.post("/auth/register", response_model=UserOut, status_code=201)
 async def register(
@@ -214,12 +188,10 @@ async def change_password(
     user_id = UUID(str(current_user.id))
     await user_repository.update_by_id(user_id, data)
 
-    # новый токен, уже "после смены пароля"
     new_token = create_access_token(
         subject=str(user_id),
         issued_at=password_changed_at_ts,
         expires_delta=60*60*8,
     )
-    print(new_token)
 
     return Token(access_token=new_token, token_type="bearer")

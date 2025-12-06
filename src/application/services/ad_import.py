@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import date, datetime
 from typing import Any
+from uuid import UUID
 
 from ldap3 import (
     ALL_ATTRIBUTES,
@@ -19,10 +20,10 @@ from src.infrastructure.repositories import EmployeeRepository, PositionReposito
 
 class AdImportService:
     def __init__(
-        self,
-        employee_repo: EmployeeRepository,
-        position_repo: PositionRepository,
-        team_repo: TeamRepository,
+            self,
+            employee_repo: EmployeeRepository,
+            position_repo: PositionRepository,
+            team_repo: TeamRepository,
     ) -> None:
         self.employee_repo = employee_repo
         self.position_repo = position_repo
@@ -38,7 +39,7 @@ class AdImportService:
         if not teams:
             raise ValueError("No teams available to attach imported employees")
 
-        team_lookup = {team.name: team for team in teams}
+        team_lookup = {(team.name, team.parent_id): team for team in teams}
         default_team = teams[0]
         default_leader_id = default_team.leader_employee_id
 
@@ -52,13 +53,27 @@ class AdImportService:
             if mapped["object_id"] in existing_object_ids:
                 continue
 
-            team = team_lookup.get(mapped["department"]) or await self.team_repo.get_or_create(
-                name=mapped["department"] or default_team.name,
+            legal_entity_name = mapped["legal_entity"] or default_team.name
+
+            company_team = await self._get_or_create_team(
+                name=legal_entity_name,
                 leader_employee_id=default_leader_id,
                 parent_id=None,
+                lookup=team_lookup,
             )
 
-            team_lookup[team.name] = team
+            department_name = mapped["department"]
+
+            if department_name:
+                team = await self._get_or_create_team(
+                    name=department_name,
+                    leader_employee_id=default_leader_id,
+                    parent_id=company_team.id,
+                    lookup=team_lookup,
+                )
+            else:
+                team = company_team
+
             position = await self.position_repo.get_or_create(title=mapped["position"])
 
             await self.employee_repo.create(
@@ -86,6 +101,31 @@ class AdImportService:
             imported += 1
 
         return {"imported": imported}
+
+    async def _get_or_create_team(
+            self,
+            *,
+            name: str,
+            leader_employee_id: UUID,
+            parent_id: UUID | None,
+            lookup: dict[tuple[str, UUID | None], Any],
+    ):
+        cache_key = (name, parent_id)
+        cached = lookup.get(cache_key)
+        if cached:
+            return cached
+
+        existing = await self.team_repo.find_by_name(name)
+
+        if existing and existing.parent_id != parent_id:
+            existing = await self.team_repo.update_parent(existing.id, parent_id)
+        elif not existing:
+            existing = await self.team_repo.create(
+                name=name, leader_employee_id=leader_employee_id, parent_id=parent_id
+            )
+
+        lookup[cache_key] = existing
+        return existing
 
     async def _fetch_all_users(self) -> list[dict[str, Any]]:
         return await asyncio.to_thread(self._fetch_all_users_sync)
@@ -147,6 +187,9 @@ class AdImportService:
 
     def _map_entry(self, entry: dict[str, Any]) -> dict[str, Any] | None:
         attributes: dict[str, Any] = entry.get("attributes", {})
+
+        if self._is_service_account(entry):
+            return None
 
         object_id = self._first_attr(attributes, "objectGUID")
         email = self._first_attr(attributes, "mail") or self._first_attr(
@@ -211,3 +254,13 @@ class AdImportService:
         if isinstance(value, list):
             return value[0] if value else None
         return value
+
+    def _is_service_account(self, entry: dict[str, Any]) -> bool:
+        dn = entry.get("dn", "")
+        attributes: dict[str, Any] = entry.get("attributes", {})
+        distinguished_name = self._first_attr(attributes, "distinguishedName") or ""
+
+        dn_lower = str(dn).lower()
+        distinguished_lower = str(distinguished_name).lower()
+
+        return "ou=service" in dn_lower or "ou=service" in distinguished_lower
