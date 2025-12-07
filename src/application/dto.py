@@ -8,11 +8,9 @@ from src.domain.utils.user import (
     build_full_name,
     build_short_name,
     resolve_position,
-    resolve_grade,
     resolve_experience,
     resolve_status,
     resolve_team,
-    resolve_boss_id
 )
 
 
@@ -182,7 +180,6 @@ class UserDTO(BaseModel):
     team: List[str]
     boss: Optional[UserLinkDTO]
     position: str
-    grade: str
     experience: int
     status: str
     city: str | None = None
@@ -227,7 +224,6 @@ class UserDTO(BaseModel):
                 else None
             ),
             position=resolve_position(employee),
-            grade=resolve_grade(employee),
             experience=resolve_experience(employee),
             status=resolve_status(employee),
             city=employee.city or "",

@@ -57,20 +57,6 @@ def resolve_position(employee: Employee) -> str:
     return position.title if position and position.title else ""
 
 
-def resolve_grade(employee: Employee) -> str:
-    title = resolve_position(employee)
-    if not title:
-        return ""
-    lt = title.lower()
-
-    if lt.startswith("team lead"):
-        return "Team Lead"
-    for kw in ("junior", "middle", "senior", "lead"):
-        if lt.startswith(kw):
-            return kw.capitalize()
-    return ""
-
-
 def resolve_experience(employee: Employee) -> int:
     hire_date = employee.hire_date
     if isinstance(hire_date, date):
