@@ -23,6 +23,11 @@ class EmployeeCreatePayload(BaseModel):
     last_name: str | None = None
     birth_date: date
     hire_date: date
+    is_birthyear_visible: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("isBirthyearVisible", "is_birthyear_visible"),
+        serialization_alias="isBirthyearVisible",
+    )
     city: str | None = None
     phone: str | None = None
     mattermost: str | None = None
@@ -49,6 +54,11 @@ class UserUpdatePayload(BaseModel):
     phone: Optional[str] = None
     mattermost: Optional[str] = None
     tg: Optional[str] = None
+    is_birthyear_visible: Optional[bool] = Field(
+        default=None,
+        validation_alias=AliasChoices("isBirthyearVisible", "is_birthyear_visible"),
+        serialization_alias="isBirthyearVisible",
+    )
     about_me: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("aboutMe", "about_me"),
@@ -84,6 +94,7 @@ class UserDTO(BaseModel):
     id: str
     fio: str
     birthday: str
+    isBirthyearVisible: bool
     team: List[str]
     boss: Optional[UserLinkDTO]
     role: str
@@ -108,10 +119,19 @@ class UserDTO(BaseModel):
         is_admin: bool,
         team_lookup: dict[UUID, Team],
     ) -> "UserDTO":
+        birthday = ""
+        if employee.birth_date:
+            birthday = (
+                employee.birth_date.isoformat()
+                if employee.is_birthyear_visible
+                else employee.birth_date.strftime("%m-%d")
+            )
+
         return cls(
             id=str(employee.id),
             fio=build_full_name(employee),
-            birthday=employee.birth_date.isoformat() if employee.birth_date else "",
+            birthday=birthday,
+            isBirthyearVisible=employee.is_birthyear_visible,
             team=resolve_team(employee, team_lookup),
             boss=(
                 UserLinkDTO(

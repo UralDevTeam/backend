@@ -142,6 +142,7 @@ class EmployeeRepository:
             last_name=employee_orm.last_name,
             email=employee_orm.email,
             birth_date=employee_orm.birth_date,
+            is_birthyear_visible=getattr(employee_orm, "is_birthyear_visible", False),
             hire_date=employee_orm.hire_date,
             city=employee_orm.city,
             phone=employee_orm.phone,

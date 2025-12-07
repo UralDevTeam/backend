@@ -5,7 +5,7 @@ from uuid import UUID
 from uuid6 import uuid7
 from datetime import date
 
-from sqlalchemy import String, Date, ForeignKey
+from sqlalchemy import String, Date, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
@@ -28,6 +28,7 @@ class EmployeeOrm(Base):
     last_name: Mapped[str] = mapped_column(String, nullable=True)
     object_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     birth_date: Mapped[date] = mapped_column(Date, nullable=False)
+    is_birthyear_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     hire_date: Mapped[date] = mapped_column(Date, nullable=False)
     city: Mapped[str] = mapped_column(String, nullable=True)
     email: Mapped[str] = mapped_column(String, nullable=False)

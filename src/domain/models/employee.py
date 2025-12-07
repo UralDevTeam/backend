@@ -15,6 +15,7 @@ class Employee(BaseModel):
     last_name: str | None
     object_id: str | None = None
     birth_date: date
+    is_birthyear_visible: bool = False
     hire_date: date
     city: str | None = None
     email: str

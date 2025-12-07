@@ -21,6 +21,7 @@ class EmployeeCreationData(TypedDict):
     middle_name: str
     last_name: str | None
     birth_date: date
+    is_birthyear_visible: bool
     hire_date: date
     city: str | None
     phone: str | None
