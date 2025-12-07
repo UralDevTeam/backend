@@ -6,7 +6,7 @@ from uuid import UUID
 from uuid6 import uuid7
 
 from src.application.dto import AdminUserUpdatePayload, UserDTO, UserUpdatePayload
-from src.domain.models import User
+from src.domain.models import EmployeeStatus, User
 from src.infrastructure.repositories.position import PositionRepository
 from src.infrastructure.repositories.employee import EmployeeRepository
 from src.infrastructure.repositories.user import UserRepository
@@ -102,12 +102,17 @@ class UserService:
     async def update_me(self, current_user: User, payload: UserUpdatePayload):
         update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
 
+        status_value = update_data.pop("status", None)
+
         emp = await self.employee_repo.get_by_email(current_user.email)
         if not emp:
             return None
 
         if update_data:
             emp = await self.employee_repo.update_partial(emp.id, update_data)
+
+        if status_value:
+            await self.employee_repo.set_status(emp.id, EmployeeStatus(status_value))
 
         teams = await self.team_repo.get_all()
         team_lookup = build_team_lookup(teams)
@@ -123,6 +128,8 @@ class UserService:
 
     async def update_user(self, user_id: UUID, payload: AdminUserUpdatePayload) -> UserDTO | None:
         update_data = payload.model_dump(exclude_unset=True, exclude_none=True)
+
+        status_value = update_data.pop("status", None)
 
         employee = await self.employee_repo.get_by_id(user_id)
         if not employee:
@@ -146,6 +153,9 @@ class UserService:
 
         if update_data:
             employee = await self.employee_repo.update_partial(user_id, update_data)
+
+        if status_value:
+            await self.employee_repo.set_status(employee.id, EmployeeStatus(status_value))
 
         user = await self.user_repo.find_by_email(original_email)
         updated_user = user

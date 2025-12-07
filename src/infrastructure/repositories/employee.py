@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 from typing import Any, Optional, Sequence
 
@@ -5,7 +6,7 @@ from sqlalchemy import select, update, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.domain.models import Employee, Team, StatusHistory, Position
+from src.domain.models import Employee, Team, StatusHistory, Position, EmployeeStatus
 from src.infrastructure.db.models import EmployeeOrm, TeamOrm, PositionOrm, StatusHistoryOrm
 
 
@@ -122,6 +123,39 @@ class EmployeeRepository:
         if not employee:
             raise ValueError(f"Employee with id '{id}' not found")
         return employee
+
+    async def set_status(self, id: UUID, status: EmployeeStatus) -> StatusHistory:
+        now = datetime.now(timezone.utc)
+
+        active_status_stmt = (
+            select(StatusHistoryOrm)
+            .where(
+                StatusHistoryOrm.employee_id == id,
+                StatusHistoryOrm.ended_at.is_(None),
+            )
+            .order_by(StatusHistoryOrm.started_at.desc())
+            .limit(1)
+        )
+
+        active_status = (await self._session.execute(active_status_stmt)).scalar_one_or_none()
+
+        if active_status:
+            await self._session.execute(
+                update(StatusHistoryOrm)
+                .where(StatusHistoryOrm.id == active_status.id)
+                .values(ended_at=now)
+            )
+
+        new_status_stmt = (
+            insert(StatusHistoryOrm)
+            .values(employee_id=id, status=status.value, started_at=now, ended_at=None)
+            .returning(StatusHistoryOrm)
+        )
+
+        new_status = (await self._session.execute(new_status_stmt)).scalar_one()
+        await self._session.flush()
+
+        return StatusHistory.model_validate(new_status)
 
     def _to_domain(self, employee_orm: EmployeeOrm) -> Employee:
         team = Team.model_validate(employee_orm.team) if employee_orm.team else None

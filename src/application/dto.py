@@ -3,7 +3,7 @@ from typing import List, Optional, Literal
 from uuid import UUID
 from datetime import date
 
-from src.domain.models import Employee, Team
+from src.domain.models import Employee, Team, EmployeeStatus
 from src.domain.utils.user import (
     build_full_name,
     build_short_name,
@@ -106,6 +106,7 @@ class UserUpdatePayload(BaseModel):
     phone: Optional[str] = None
     mattermost: Optional[str] = None
     tg: Optional[str] = None
+    status: Optional[EmployeeStatus] = None
     is_birthyear_visible: Optional[bool] = Field(
         default=None,
         validation_alias=AliasChoices("isBirthyearVisible", "is_birthyear_visible"),
@@ -115,6 +116,11 @@ class UserUpdatePayload(BaseModel):
         default=None,
         validation_alias=AliasChoices("aboutMe", "about_me"),
         serialization_alias="aboutMe",
+    )
+    birth_date: Optional[date] = Field(
+        default=None,
+        validation_alias=AliasChoices("birthDate", "birth_date", "birthdate"),
+        serialization_alias="birthDate",
     )
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
@@ -181,7 +187,7 @@ class UserDTO(BaseModel):
     boss: Optional[UserLinkDTO]
     position: str
     experience: int
-    status: str
+    status: EmployeeStatus
     city: str | None = None
     email: str
     phone: str | None

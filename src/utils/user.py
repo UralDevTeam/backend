@@ -3,7 +3,7 @@ from datetime import date
 from typing import List, Dict, Set, Optional
 from uuid import UUID
 
-from src.domain.models import Team
+from src.domain.models import EmployeeStatus, Team
 
 
 def build_full_name(employee) -> str:
@@ -79,7 +79,7 @@ def resolve_experience(employee) -> int:
     return 0
 
 
-def resolve_status(employee) -> str:
+def resolve_status(employee) -> EmployeeStatus:
     history = getattr(employee, "status_history", []) or []
     for record in history:
         if record.ended_at is None and record.status:
@@ -94,7 +94,7 @@ def resolve_status(employee) -> str:
         if recent and recent[0].status:
             return recent[0].status
 
-    return "active"
+    return EmployeeStatus.ACTIVE
 
 
 def resolve_boss_id(employee, lookup: Dict[UUID, Team]) -> Optional[UUID]:
