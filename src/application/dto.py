@@ -7,7 +7,7 @@ from src.domain.models import Employee, Team
 from src.domain.utils.user import (
     build_full_name,
     build_short_name,
-    resolve_role,
+    resolve_position,
     resolve_grade,
     resolve_experience,
     resolve_status,
@@ -16,13 +16,58 @@ from src.domain.utils.user import (
 )
 
 
+class PingResponse(BaseModel):
+    ping: str
+
+
+class AdImportResultDTO(BaseModel):
+    imported: int
+
+
+class DetailResponse(BaseModel):
+    detail: str
+
+
+class TeamDTO(BaseModel):
+    id: UUID
+    name: str
+    parentId: UUID | None = None
+    leaderEmployeeId: UUID
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @classmethod
+    def from_team(cls, team: Team) -> "TeamDTO":
+        return cls(
+            id=team.id,
+            name=team.name,
+            parentId=team.parent_id,
+            leaderEmployeeId=team.leader_employee_id,
+        )
+
 
 class EmployeeCreatePayload(BaseModel):
-    first_name: str
-    middle_name: str
-    last_name: str | None = None
-    birth_date: date
-    hire_date: date
+    first_name: str = Field(
+        validation_alias=AliasChoices("firstName", "first_name"),
+        serialization_alias="firstName",
+    )
+    middle_name: str = Field(
+        validation_alias=AliasChoices("middleName", "middle_name"),
+        serialization_alias="middleName",
+    )
+    last_name: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("lastName", "last_name"),
+        serialization_alias="lastName",
+    )
+    birth_date: date = Field(
+        validation_alias=AliasChoices("birthDate", "birth_date"),
+        serialization_alias="birthDate",
+    )
+    hire_date: date = Field(
+        validation_alias=AliasChoices("hireDate", "hire_date"),
+        serialization_alias="hireDate",
+    )
     is_birthyear_visible: bool = Field(
         default=False,
         validation_alias=AliasChoices("isBirthyearVisible", "is_birthyear_visible"),
@@ -37,8 +82,16 @@ class EmployeeCreatePayload(BaseModel):
         validation_alias=AliasChoices("aboutMe", "about_me"),
         serialization_alias="aboutMe",
     )
-    legal_entity: str | None = None
-    department: str | None = None
+    legal_entity: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("legalEntity", "legal_entity"),
+        serialization_alias="legalEntity",
+    )
+    department: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("department", "department"),
+        serialization_alias="department",
+    )
     position: str
     team: str
 
@@ -48,6 +101,7 @@ class UserCreatePayload(BaseModel):
     password: str
     role: Literal["admin", "user"] = "user"
     employee: EmployeeCreatePayload
+
 
 class UserUpdatePayload(BaseModel):
     city: Optional[str] = None
@@ -67,15 +121,44 @@ class UserUpdatePayload(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
+
 class AdminUserUpdatePayload(UserUpdatePayload):
-    first_name: Optional[str] = None
-    middle_name: Optional[str] = None
-    last_name: Optional[str] = None
-    birth_date: Optional[date] = None
-    hire_date: Optional[date] = None
+    first_name: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("firstName", "first_name"),
+        serialization_alias="firstName",
+    )
+    middle_name: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("middleName", "middle_name"),
+        serialization_alias="middleName",
+    )
+    last_name: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("lastName", "last_name"),
+        serialization_alias="lastName",
+    )
+    birth_date: Optional[date] = Field(
+        default=None,
+        validation_alias=AliasChoices("birthDate", "birth_date"),
+        serialization_alias="birthDate",
+    )
+    hire_date: Optional[date] = Field(
+        default=None,
+        validation_alias=AliasChoices("hireDate", "hire_date"),
+        serialization_alias="hireDate",
+    )
     email: Optional[str] = None
-    legal_entity: Optional[str] = None
-    department: Optional[str] = None
+    legal_entity: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("legalEntity", "legal_entity"),
+        serialization_alias="legalEntity",
+    )
+    department: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("department", "department"),
+        serialization_alias="department",
+    )
     position: Optional[str] = None
     team: Optional[str] = None
     is_admin: Optional[bool] = Field(
@@ -83,6 +166,7 @@ class AdminUserUpdatePayload(UserUpdatePayload):
         validation_alias=AliasChoices("isAdmin", "is_admin"),
         serialization_alias="isAdmin",
     )
+
 
 class UserLinkDTO(BaseModel):
     id: str
@@ -97,7 +181,7 @@ class UserDTO(BaseModel):
     isBirthyearVisible: bool
     team: List[str]
     boss: Optional[UserLinkDTO]
-    role: str
+    position: str
     grade: str
     experience: int
     status: str
@@ -113,11 +197,11 @@ class UserDTO(BaseModel):
 
     @classmethod
     def from_employee(
-        cls,
-        employee: Employee,
-        boss: Employee | None,
-        is_admin: bool,
-        team_lookup: dict[UUID, Team],
+            cls,
+            employee: Employee,
+            boss: Employee | None,
+            is_admin: bool,
+            team_lookup: dict[UUID, Team],
     ) -> "UserDTO":
         birthday = ""
         if employee.birth_date:
@@ -142,7 +226,7 @@ class UserDTO(BaseModel):
                 if boss
                 else None
             ),
-            role=resolve_role(employee),
+            position=resolve_position(employee),
             grade=resolve_grade(employee),
             experience=resolve_experience(employee),
             status=resolve_status(employee),

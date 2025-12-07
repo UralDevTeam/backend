@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from uuid6 import uuid7
 
 from src.api.dependencies import get_user_repository
@@ -47,8 +47,16 @@ class UserOut(BaseModel):
 
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    access_token: str = Field(
+        serialization_alias="accessToken",
+        validation_alias=AliasChoices("accessToken", "access_token"),
+    )
+    token_type: str = Field(
+        serialization_alias="tokenType",
+        validation_alias=AliasChoices("tokenType", "token_type"),
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class TokenPayload(BaseModel):
@@ -58,8 +66,16 @@ class TokenPayload(BaseModel):
 
 
 class PasswordChangeIn(BaseModel):
-    old_password: str
-    new_password: str
+    old_password: str = Field(
+        validation_alias=AliasChoices("oldPassword", "old_password"),
+        serialization_alias="oldPassword",
+    )
+    new_password: str = Field(
+        validation_alias=AliasChoices("newPassword", "new_password"),
+        serialization_alias="newPassword",
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 def create_access_token(subject: str, issued_at: int, expires_delta: int) -> str:

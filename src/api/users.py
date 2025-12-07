@@ -8,7 +8,13 @@ from src.api.dependencies import (
     get_user_service,
 )
 from src.api.auth import get_current_user, hash_password
-from src.application.dto import AdminUserUpdatePayload, UserDTO, UserUpdatePayload, UserCreatePayload
+from src.application.dto import (
+    AdminUserUpdatePayload,
+    DetailResponse,
+    UserDTO,
+    UserUpdatePayload,
+    UserCreatePayload,
+)
 from src.application.services import AvatarService, UserService
 from src.domain.models.user import User
 from src.infrastructure.repositories import EmployeeRepository
@@ -108,7 +114,11 @@ async def create_user(
     return created_user
 
 
-@router.post("/users/{user_id}/avatar", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/users/{user_id}/avatar",
+    status_code=status.HTTP_201_CREATED,
+    response_model=DetailResponse,
+)
 async def upload_avatar(
         user_id: UUID,
         file: UploadFile = File(...),
@@ -131,7 +141,7 @@ async def upload_avatar(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    return {"detail": "Avatar uploaded"}
+    return DetailResponse(detail="Avatar uploaded")
 
 
 @router.get("/users/{user_id}/avatar/large")

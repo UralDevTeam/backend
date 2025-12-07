@@ -52,13 +52,13 @@ def resolve_team(employee: Employee, lookup: Dict[UUID, Team]) -> List[str]:
     return names[1:] if len(names) > 1 else names
 
 
-def resolve_role(employee: Employee) -> str:
+def resolve_position(employee: Employee) -> str:
     position = employee.position
     return position.title if position and position.title else ""
 
 
 def resolve_grade(employee: Employee) -> str:
-    title = resolve_role(employee)
+    title = resolve_position(employee)
     if not title:
         return ""
     lt = title.lower()
