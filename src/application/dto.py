@@ -164,7 +164,7 @@ class AdminUserUpdatePayload(UserUpdatePayload):
         serialization_alias="department",
     )
     position: Optional[str] = None
-    team: Optional[str] = None
+    team: list[str] = []
     is_admin: Optional[bool] = Field(
         default=None,
         validation_alias=AliasChoices("isAdmin", "is_admin"),
