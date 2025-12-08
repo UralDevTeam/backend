@@ -6,7 +6,7 @@ from uuid import UUID
 from uuid6 import uuid7
 
 from src.application.dto import AdminUserUpdatePayload, UserDTO, UserUpdatePayload
-from src.domain.models import EmployeeStatus, User
+from src.domain.models import EmployeeStatus, User, Team, Employee
 from src.infrastructure.repositories.position import PositionRepository
 from src.infrastructure.repositories.employee import EmployeeRepository
 from src.infrastructure.repositories.user import UserRepository
@@ -138,18 +138,17 @@ class UserService:
         original_email = employee.email
 
         position_title = update_data.pop("position", None)
-        team_name = update_data.pop("team", None)
+        team_names = update_data.pop("team", None)
         is_admin = update_data.pop("is_admin", None)
 
         if position_title:
             position = await self.position_repo.get_or_create(title=position_title)
             update_data["position_id"] = position.id
 
-        if team_name:
-            team = await self.team_repo.find_by_name(team_name)
-            if not team:
-                raise ValueError(f"Team '{team_name}' not found")
-            update_data["team_id"] = team.id
+        if team_names:
+            update_data["team_id"] = await self._resolve_team_id(employee, team_names)
+        else:
+            raise ValueError("Team names cannot be empty")
 
         if update_data:
             employee = await self.employee_repo.update_partial(user_id, update_data)
@@ -247,3 +246,44 @@ class UserService:
             is_admin=(role == "admin"),
             team_lookup=team_lookup,
         )
+
+    async def _resolve_team_id(
+        self,
+        employee: Employee,
+        team_names: list[str],
+    ) -> UUID:
+        # 2 валидных кейса:
+        # 1) все команды существуют и идут в иерархическом порядке
+        # 2) последней команды может не быть, тогда её создаём относительно последней команды
+
+        if not team_names:
+            raise ValueError("Team names cannot be empty")
+
+        parent_team: Team | None = None
+        team_names_len = len(team_names)
+
+        for i, name in enumerate(team_names):
+            team = await self.team_repo.find_by_name(name)
+
+            if not team:
+                if i != team_names_len - 1:
+                    raise ValueError(f"Team '{name}' not found")
+                parent_id = parent_team.id if parent_team else None
+                team = await self.team_repo.create(
+                    name=name,
+                    leader_employee_id=employee.id,
+                    parent_id=parent_id,
+                )
+            else:
+                if team.leader_employee_id == employee.id:
+                    raise ValueError(
+                        f"Employee '{employee.id}' is already a leader of team '{team.name}'"
+                    )
+                if i != 0 and team.parent_id != parent_team.id:
+                    raise ValueError(
+                        f"Team '{parent_team.name}' is not parent of team '{team.name}'"
+                    )
+
+            parent_team = team
+
+        return parent_team.id
