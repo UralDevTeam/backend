@@ -88,18 +88,20 @@ def resolve_boss_id(employee: Employee, lookup: Dict[UUID, Team]) -> Optional[UU
         return None
 
     current = team
-    visited: Set[UUID] = set()
     emp_id = employee.id
 
-    while current and current.id not in visited:
-        visited.add(current.id)
+    while current:
         leader_id = current.leader_employee_id
 
         if leader_id and leader_id != emp_id:
             return leader_id
 
-        if current.parent_id is None:
+        if not current.parent_id:
             break
+
         current = lookup.get(current.parent_id)
+
+        if current and current.id == team.id:
+            break
 
     return None

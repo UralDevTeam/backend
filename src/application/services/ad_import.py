@@ -218,6 +218,8 @@ class AdImportService:
         birth_date = self._parse_date(self._first_attr(attributes, "birthDate"))
         hire_date = self._parse_date(self._first_attr(attributes, "whenCreated"))
 
+        city = self._normalize_city(self._first_attr(attributes, "l"))
+
         return {
             "object_id": object_id,
             "email": email,
@@ -226,7 +228,7 @@ class AdImportService:
             "last_name": last_name,
             "birth_date": birth_date or date.today(),
             "hire_date": hire_date or date.today(),
-            "city": self._first_attr(attributes, "l"),
+            "city": city,
             "phone": self._first_attr(attributes, "telephoneNumber"),
             "legal_entity": self._first_attr(attributes, "company"),
             "department": self._first_attr(attributes, "department"),
@@ -254,6 +256,13 @@ class AdImportService:
         if isinstance(value, list):
             return value[0] if value else None
         return value
+
+    def _normalize_city(self, value: Any) -> str | None:
+        if value is None:
+            return None
+
+        city = str(value).strip()
+        return city or None
 
     def _is_service_account(self, entry: dict[str, Any]) -> bool:
         dn = entry.get("dn", "")

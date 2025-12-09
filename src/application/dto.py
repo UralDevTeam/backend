@@ -232,7 +232,7 @@ class UserDTO(BaseModel):
             position=resolve_position(employee),
             experience=resolve_experience(employee),
             status=resolve_status(employee),
-            city=employee.city or "",
+            city=employee.city,
             email=employee.email,
             phone=employee.phone,
             mattermost=employee.mattermost,
