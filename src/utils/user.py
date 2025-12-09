@@ -102,21 +102,14 @@ def resolve_boss_id(employee, lookup: Dict[UUID, Team]) -> Optional[UUID]:
     if not team:
         return None
 
-    current = team
+    lookup.setdefault(team.id, team)
+
+    path = collect_team_path(team, lookup)
     emp_id = employee.id
 
-    while current:
-        leader_id = current.leader_employee_id
-
+    for node in path:
+        leader_id = node.leader_employee_id
         if leader_id and leader_id != emp_id:
             return leader_id
-
-        if not current.parent_id:
-            break
-
-        current = lookup.get(current.parent_id)
-
-        if current and current.id == team.id:
-            break
 
     return None

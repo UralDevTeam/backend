@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import Counter, defaultdict
 from datetime import date, datetime
 from typing import Any
 from uuid import UUID
@@ -44,9 +45,11 @@ class AdImportService:
         default_leader_id = default_team.leader_employee_id
 
         imported = 0
+        manager_lookup = self._build_manager_lookup(ad_users)
+        created_employees: dict[str, dict[str, Any]] = {}
 
         for entry in ad_users:
-            mapped = self._map_entry(entry)
+            mapped = self._map_entry(entry, manager_lookup)
             if not mapped:
                 continue
 
@@ -76,7 +79,7 @@ class AdImportService:
 
             position = await self.position_repo.get_or_create(title=mapped["position"])
 
-            await self.employee_repo.create(
+            employee = await self.employee_repo.create(
                 {
                     "first_name": mapped["first_name"],
                     "middle_name": mapped["middle_name"],
@@ -97,8 +100,16 @@ class AdImportService:
                 }
             )
 
+            created_employees[mapped["object_id"]] = {
+                "id": employee.id,
+                "team_id": team.id,
+                "manager_object_id": mapped.get("manager_object_id"),
+            }
+
             existing_object_ids.add(mapped["object_id"])
             imported += 1
+
+        await self._assign_team_leaders(team_lookup, created_employees)
 
         return {"imported": imported}
 
@@ -185,7 +196,11 @@ class AdImportService:
 
         return users
 
-    def _map_entry(self, entry: dict[str, Any]) -> dict[str, Any] | None:
+    def _map_entry(
+            self,
+            entry: dict[str, Any],
+            manager_lookup: dict[str, str],
+    ) -> dict[str, Any] | None:
         attributes: dict[str, Any] = entry.get("attributes", {})
 
         if self._is_service_account(entry):
@@ -220,6 +235,10 @@ class AdImportService:
 
         city = self._normalize_city(self._first_attr(attributes, "l"))
 
+        manager_dn = self._first_attr(attributes, "manager")
+        manager_dn_lower = str(manager_dn).lower() if manager_dn else None
+        manager_object_id = manager_lookup.get(manager_dn_lower) if manager_dn_lower else None
+
         return {
             "object_id": object_id,
             "email": email,
@@ -233,7 +252,18 @@ class AdImportService:
             "legal_entity": self._first_attr(attributes, "company"),
             "department": self._first_attr(attributes, "department"),
             "position": self._first_attr(attributes, "title") or "Сотрудник",
+            "manager_object_id": manager_object_id,
         }
+
+    def _build_manager_lookup(self, entries: list[dict[str, Any]]) -> dict[str, str]:
+        lookup: dict[str, str] = {}
+        for entry in entries:
+            dn = str(entry.get("dn", "")).lower()
+            attributes: dict[str, Any] = entry.get("attributes", {})
+            object_id = self._first_attr(attributes, "objectGUID")
+            if dn and object_id:
+                lookup[dn] = object_id
+        return lookup
 
     def _parse_date(self, value: Any) -> date | None:
         if not value:
@@ -273,3 +303,40 @@ class AdImportService:
         distinguished_lower = str(distinguished_name).lower()
 
         return "ou=service" in dn_lower or "ou=service" in distinguished_lower
+
+    async def _assign_team_leaders(
+            self,
+            team_lookup: dict[tuple[str, UUID | None], Any],
+            created_employees: dict[str, dict[str, Any]],
+    ) -> None:
+        members_by_team: dict[UUID, list[str]] = defaultdict(list)
+
+        for object_id, info in created_employees.items():
+            members_by_team[info["team_id"]].append(object_id)
+
+        for team_id, members in members_by_team.items():
+            in_team = set(members)
+            manager_counts: Counter[str] = Counter()
+            fallback_candidate: str | None = None
+
+            for object_id in members:
+                manager_object_id = created_employees[object_id].get("manager_object_id")
+                if manager_object_id in in_team:
+                    manager_counts[manager_object_id] += 1
+                elif fallback_candidate is None:
+                    fallback_candidate = object_id
+
+            candidate_object_id: str | None = None
+
+            if manager_counts:
+                candidate_object_id = manager_counts.most_common(1)[0][0]
+            else:
+                candidate_object_id = fallback_candidate
+
+            if not candidate_object_id:
+                continue
+
+            leader_id = created_employees[candidate_object_id]["id"]
+            updated_team = await self.team_repo.update_leader(team_id, leader_id)
+            lookup_key = (updated_team.name, updated_team.parent_id)
+            team_lookup[lookup_key] = updated_team

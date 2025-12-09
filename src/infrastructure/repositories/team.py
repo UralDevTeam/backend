@@ -30,7 +30,7 @@ class TeamRepository:
         return Team.model_validate(team)
 
     async def get_or_create(
-        self, *, name: str, leader_employee_id: UUID, parent_id: UUID | None
+            self, *, name: str, leader_employee_id: UUID, parent_id: UUID | None
     ) -> Team:
         existing = await self.find_by_name(name)
         if existing:
@@ -59,6 +59,19 @@ class TeamRepository:
             update(TeamOrm)
             .where(TeamOrm.id == team_id)
             .values(parent_id=parent_id)
+            .returning(TeamOrm)
+        )
+
+        team = (await self._session.execute(stmt)).scalar_one()
+        await self._session.flush()
+
+        return Team.model_validate(team)
+
+    async def update_leader(self, team_id: UUID, leader_employee_id: UUID) -> Team:
+        stmt = (
+            update(TeamOrm)
+            .where(TeamOrm.id == team_id)
+            .values(leader_employee_id=leader_employee_id)
             .returning(TeamOrm)
         )
 
