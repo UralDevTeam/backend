@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,3 +44,9 @@ class AvatarRepository:
         if not avatar_orm:
             return None
         return Avatar.model_validate(avatar_orm)
+
+    async def delete_by_employee_id(self, employee_id: UUID) -> bool:
+        stmt = delete(AvatarOrm).where(AvatarOrm.employee_id == employee_id).returning(AvatarOrm.employee_id)
+        result = await self._session.execute(stmt)
+        employee_id = result.scalar_one_or_none()
+        return employee_id is not None
