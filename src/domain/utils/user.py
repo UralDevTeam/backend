@@ -49,7 +49,7 @@ def resolve_team(employee: Employee, lookup: Dict[UUID, Team]) -> List[str]:
 
     path = list(reversed(collect_team_path(team, lookup)))
     names = [node.name for node in path if node.name]
-    return names[1:] if len(names) > 1 else names
+    return names
 
 
 def resolve_position(employee: Employee) -> str:
