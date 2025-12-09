@@ -41,6 +41,11 @@ class AvatarService:
     async def get_avatar(self, employee_id: UUID) -> Avatar | None:
         return await self.avatar_repository.get_by_employee_id(employee_id)
 
+    async def delete_avatar(self, employee_id: UUID) -> None:
+        avatar_exists = await self.avatar_repository.delete_by_employee_id(employee_id)
+        if not avatar_exists:
+            raise ValueError(f"No avatar found for user '{employee_id}'")
+
     def _load_image_library(self) -> Tuple["PILImage", "UnidentifiedImageError"]:
         try:
             from PIL import Image, UnidentifiedImageError  # type: ignore

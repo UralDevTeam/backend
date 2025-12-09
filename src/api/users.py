@@ -141,7 +141,33 @@ async def upload_avatar(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    return DetailResponse(detail="Avatar uploaded")
+    return DetailResponse(detail="Avatar deleted")
+
+@router.delete(
+    "/users/{user_id}/avatar",
+    response_model=DetailResponse,
+)
+async def delete_avatar(
+        user_id: UUID,
+        current_user: User = Depends(get_current_user),
+        avatar_service: AvatarService = Depends(get_avatar_service),
+        employee_repository: EmployeeRepository = Depends(get_employee_repository),
+):
+    target_employee = await employee_repository.get_by_id(user_id)
+    if not target_employee:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id '{user_id}' not found")
+
+    if current_user.role != "admin":
+        current_employee = await employee_repository.get_by_email(current_user.email)
+        if not current_employee or current_employee.id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot delete avatar for this user")
+
+    try:
+        await avatar_service.delete_avatar(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return DetailResponse(detail="Avatar deleted")
 
 
 @router.get("/users/{user_id}/avatar/large")
