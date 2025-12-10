@@ -147,8 +147,6 @@ class UserService:
 
         if team_names:
             update_data["team_id"] = await self._resolve_team_id(employee, team_names)
-        else:
-            raise ValueError("Team names cannot be empty")
 
         if update_data:
             employee = await self.employee_repo.update_partial(user_id, update_data)
