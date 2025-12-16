@@ -1,7 +1,7 @@
 from typing import Sequence, Optional
 from uuid import UUID
 
-from sqlalchemy import select, insert, update, func
+from sqlalchemy import select, insert, update, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.models import Team
@@ -42,6 +42,12 @@ class TeamRepository:
             return None
 
         return Team.model_validate(team)
+
+    async def find_by_parent_id(self, parent_id: UUID) -> list[Team]:
+        stmt = select(TeamOrm).where(TeamOrm.parent_id == parent_id)
+        teams = (await self._session.execute(stmt)).scalars().all()
+
+        return [Team.model_validate(team) for team in teams]
 
     async def get_or_create(
             self, *, name: str, leader_employee_id: UUID, parent_id: UUID | None

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 from typing import Any, Optional, Sequence
 
-from sqlalchemy import select, update, insert
+from sqlalchemy import select, update, insert, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -52,6 +52,22 @@ class EmployeeRepository:
             return None
 
         return self._to_domain(employee_orm)
+
+    async def get_by_team_id(self, team_id: UUID) -> list[Employee]:
+        stmt = (
+            select(EmployeeOrm)
+            .where(EmployeeOrm.team_id == team_id)
+            .options(
+                selectinload(EmployeeOrm.team),
+                selectinload(EmployeeOrm.position),
+                selectinload(EmployeeOrm.status_history),
+            )
+        )
+
+        result = await self._session.execute(stmt)
+        employee_orms: list[EmployeeOrm] = list(result.scalars().all())
+
+        return [self._to_domain(employee_orm) for employee_orm in employee_orms]
 
     async def get_by_object_id(self, object_id: str) -> Optional[Employee]:
         stmt = (
@@ -156,6 +172,10 @@ class EmployeeRepository:
         await self._session.flush()
 
         return StatusHistory.model_validate(new_status)
+
+    async def delete_by_id(self, id: UUID) -> None:
+        delete_stmt = delete(EmployeeOrm).where(EmployeeOrm.id == id)
+        await self._session.execute(delete_stmt)
 
     def _to_domain(self, employee_orm: EmployeeOrm) -> Employee:
         team = Team.model_validate(employee_orm.team) if employee_orm.team else None

@@ -91,6 +91,23 @@ async def update_user(
     return user
 
 
+@router.delete("/user/{user_id}")
+async def delete_user(
+    user_id: UUID,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    try:
+        await user_service.delete_user(user_id)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/user", response_model=UserDTO, status_code=status.HTTP_201_CREATED)
 async def create_user(
         payload: UserCreatePayload,

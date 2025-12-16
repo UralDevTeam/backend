@@ -17,7 +17,7 @@ class StatusHistoryOrm(Base):
                                      default=uuid7,
                                      )
     employee_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("employees.id"), nullable=False
+        PG_UUID(as_uuid=True), ForeignKey("employees.id", ondelete="CASCADE"), nullable=False
     )
     status: Mapped[str] = mapped_column(String, nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
