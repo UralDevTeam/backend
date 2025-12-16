@@ -203,11 +203,14 @@ class UserService:
 
         employee_data = employee_payload.copy()
         position_title = employee_data.pop("position")
-        team_name = employee_data.pop("team")
+        team_name = " ".join(employee_data.pop("team").split())
+
+        if not team_name:
+            raise ValueError("Team name cannot be empty")
 
         position = await self.position_repo.get_or_create(title=position_title)
 
-        team = await self.team_repo.find_by_name(team_name)
+        team = await self.team_repo.find_by_name(team_name, parent_id=None)
         if not team:
             creator_employee = await self.employee_repo.get_by_email(creator.email)
             if not creator_employee:
@@ -260,23 +263,23 @@ class UserService:
         parent_team: Team | None = None
         team_names_len = len(team_names)
 
-        for i, name in enumerate(team_names):
-            team = await self.team_repo.find_by_name(name)
+        for i, raw_name in enumerate(team_names):
+            name = " ".join(raw_name.split())
+            if not name:
+                raise ValueError("Team name cannot be empty")
+
+            parent_id = parent_team.id if parent_team else None
+            team = await self.team_repo.find_by_name(name, parent_id=parent_id)
 
             if not team:
                 if i != team_names_len - 1:
                     raise ValueError(f"Team '{name}' not found")
-                parent_id = parent_team.id if parent_team else None
                 team = await self.team_repo.create(
                     name=name,
                     leader_employee_id=employee.id,
                     parent_id=parent_id,
                 )
             else:
-                if team.leader_employee_id == employee.id:
-                    raise ValueError(
-                        f"Employee '{employee.id}' is already a leader of team '{team.name}'"
-                    )
                 if i != 0 and team.parent_id != parent_team.id:
                     raise ValueError(
                         f"Team '{parent_team.name}' is not parent of team '{team.name}'"

@@ -126,7 +126,7 @@ class AdImportService:
         if cached:
             return cached
 
-        existing = await self.team_repo.find_by_name(name)
+        existing = await self.team_repo.find_by_name(name, parent_id=parent_id)
 
         if existing and existing.parent_id != parent_id:
             existing = await self.team_repo.update_parent(existing.id, parent_id)

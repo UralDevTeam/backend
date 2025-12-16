@@ -1,7 +1,7 @@
 from typing import Sequence, Optional
 from uuid import UUID
 
-from sqlalchemy import select, insert, update
+from sqlalchemy import select, insert, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.models import Team
@@ -20,9 +20,23 @@ class TeamRepository:
         teams: Sequence[TeamOrm] = result.scalars().all()
         return [Team.model_validate(team) for team in teams]
 
-    async def find_by_name(self, name: str) -> Optional[Team]:
-        stmt = select(TeamOrm).where(TeamOrm.name == name)
-        team = (await self._session.execute(stmt)).scalar_one_or_none()
+    async def find_by_name(
+            self, name: str, *, parent_id: UUID | None = None
+    ) -> Optional[Team]:
+        normalized_name = " ".join(name.split()).lower()
+
+        stmt = select(TeamOrm).where(
+            func.lower(
+                func.regexp_replace(func.trim(TeamOrm.name), r"\\s+", " ", "g")
+            )
+            == normalized_name
+        )
+        if parent_id is None:
+            stmt = stmt.where(TeamOrm.parent_id.is_(None))
+        else:
+            stmt = stmt.where(TeamOrm.parent_id == parent_id)
+
+        team = (await self._session.execute(stmt)).scalars().first()
 
         if not team:
             return None
@@ -32,20 +46,30 @@ class TeamRepository:
     async def get_or_create(
             self, *, name: str, leader_employee_id: UUID, parent_id: UUID | None
     ) -> Team:
-        existing = await self.find_by_name(name)
+        normalized_name = " ".join(name.split())
+
+        existing = await self.find_by_name(normalized_name, parent_id=parent_id)
         if existing:
             return existing
 
         return await self.create(
-            name=name, leader_employee_id=leader_employee_id, parent_id=parent_id
+            name=normalized_name,
+            leader_employee_id=leader_employee_id,
+            parent_id=parent_id,
         )
 
     async def create(
             self, *, name: str, leader_employee_id: UUID, parent_id: UUID | None
     ) -> Team:
+        normalized_name = " ".join(name.split())
+
         stmt = (
             insert(TeamOrm)
-            .values(name=name, leader_employee_id=leader_employee_id, parent_id=parent_id)
+            .values(
+                name=normalized_name,
+                leader_employee_id=leader_employee_id,
+                parent_id=parent_id,
+            )
             .returning(TeamOrm)
         )
 
