@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select, insert, update
+from sqlalchemy import select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.models.user import User
@@ -66,3 +66,7 @@ class UserRepository:
 
         await self._session.flush()
         return User.model_validate(user_orm)
+
+    async def delete_by_email(self, email: str) -> None:
+        delete_stmt = delete(UserOrm).where(UserOrm.email == email)
+        await self._session.execute(delete_stmt)

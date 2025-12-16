@@ -248,6 +248,23 @@ class UserService:
             team_lookup=team_lookup,
         )
 
+    async def delete_user(
+        self,
+        employee_id: UUID
+    ) -> None:
+        employee = await self.employee_repo.get_by_id(employee_id)
+        employees_in_team = await self.employee_repo.get_by_team_id(employee.team.id)
+        other_employees = [e for e in employees_in_team if e.id != employee.id]
+        if employee.team.leader_employee_id == employee.id:
+            if other_employees:
+                raise ValueError(f"Нельзя удалить сотрудника '{employee.id}', "
+                             f"потому что он лидер команды {employee.team.name}, и в его команде еще есть сотрудники")
+            if await self._are_employees_in_teams_below(employee.team):
+                raise ValueError(f"Нельзя удалить сотрудника '{employee.id}', "
+                                 f"потому что в дочерних командах еще есть сотрудники")
+        await self.user_repo.delete_by_email(employee.email)
+        await self.employee_repo.delete_by_id(employee.id)
+
     async def _resolve_team_id(
         self,
         employee: Employee,
@@ -288,3 +305,16 @@ class UserService:
             parent_team = team
 
         return parent_team.id
+
+    async def _are_employees_in_teams_below(self, team: Team) -> bool:
+        teams_below = await self.team_repo.find_by_parent_id(team.id)
+        for child in teams_below:
+            if await self._is_employees_in_team(child) or await self._are_employees_in_teams_below(child):
+                return True
+        return False
+
+    async def _is_employees_in_team(
+        self,
+        team: Team,
+    ) -> bool:
+        return await self.employee_repo.get_by_team_id(team.id) != []
