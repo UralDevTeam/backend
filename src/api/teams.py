@@ -6,9 +6,7 @@ from src.infrastructure.repositories import TeamRepository
 
 router = APIRouter()
 
-router.get("/teams", response_model=list[TeamDTO])
-
-
+@router.get("/teams", response_model=list[TeamDTO])
 async def list_teams(team_repository: TeamRepository = Depends(get_team_repository)) -> list[TeamDTO]:
     """Возвращает список всех команд."""
     teams = await team_repository.get_all()
