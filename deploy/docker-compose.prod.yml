@@ -1,17 +1,17 @@
 services:
   init:
-    image: fastapi-ldap-app:local
-    build: .
+    image: ${IMAGE}:${TAG}
     env_file: [ .env ]
     depends_on:
       postgres:
         condition: service_healthy
     command: >
       sh -ceu '
-        : "$$POSTGRES_PASSWORD";
-        export PGPASSWORD="$$POSTGRES_PASSWORD";
+        : "$$POSTGRES__PASSWORD";
+        export PGPASSWORD="$$POSTGRES__PASSWORD";
 
-        TABLES="$$(psql -h "$$POSTGRES_HOST" -p "$$POSTGRES_PORT" -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema = '\''public'\'';")";
+        TABLES="$$(psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME"
+          -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema = '\''public'\'';")";
 
         NEED_SEED=false;
         if [ "$${TABLES:-0}" -eq 0 ]; then
@@ -26,7 +26,8 @@ services:
 
         if [ "$$NEED_SEED" = "true" ] && [ -f src/res/init-db.sql ]; then
           echo "Seeding DB...";
-          psql -h "$$POSTGRES_HOST" -p "$$POSTGRES_PORT" -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -v ON_ERROR_STOP=1 -f src/res/init-db.sql;
+          psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME" \
+            -v ON_ERROR_STOP=1 -f src/res/init-db.sql;
         else
           echo "Seed skipped.";
         fi
@@ -34,18 +35,22 @@ services:
     restart: "no"
 
   app:
-    image: fastapi-ldap-app:local
-    build: .
-    env_file: [.env]
+    image: ${IMAGE}:${TAG}
+    env_file: [ .env ]
     depends_on:
       init:
         condition: service_completed_successfully
+    ports: [ "8000:8000" ]
     command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
-    ports: ["8000:8000"]
+    restart: always
 
   postgres:
     image: postgres:17
     env_file: [ .env ]
+    environment:
+      POSTGRES_DB: ${POSTGRES__DB_NAME}
+      POSTGRES_USER: ${POSTGRES__USER}
+      POSTGRES_PASSWORD: ${POSTGRES__PASSWORD}
     ports: [ "5432:5432" ]
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -54,7 +59,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
+    restart: always
 
 volumes:
   postgres_data:

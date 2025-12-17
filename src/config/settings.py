@@ -1,7 +1,7 @@
 import pathlib
 from typing import Optional
 
-from pydantic import AmqpDsn, Field, PostgresDsn, SecretStr
+from pydantic import Field, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_FILE = pathlib.Path(__file__).parent.parent.parent / ".env"
@@ -14,6 +14,8 @@ class PostgresSettings(BaseSettings):
     user: SecretStr
     password: SecretStr
 
+    model_config = SettingsConfigDict(extra="forbid")
+
     @property
     def db_url(self) -> str:
         return str(
@@ -24,23 +26,33 @@ class PostgresSettings(BaseSettings):
                 host=self.host,
                 port=self.port,
                 path=self.db_name,
-            ),
+            )
         )
 
 
 class ActiveDirectorySettings(BaseSettings):
     host: str
+    base_dn: str
+
     port: int = 389
     use_ssl: bool = False
     user: Optional[str] = None
     password: Optional[SecretStr] = None
-    base_dn: str
     page_size: int = 1000
 
+    model_config = SettingsConfigDict(extra="forbid")
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_nested_delimiter="__", env_file=ENV_FILE)
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILE,
+        env_nested_delimiter="__",  # <-- FIX: безопасный разделитель для вложенных моделей
+        extra="forbid",
+    )
+
     postgres: PostgresSettings
-    ad: ActiveDirectorySettings = Field(default_factory=ActiveDirectorySettings)
+
+    ad: Optional[ActiveDirectorySettings] = None
 
 
 settings = Settings()
