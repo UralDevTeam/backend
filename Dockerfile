@@ -1,40 +1,50 @@
+# syntax=docker/dockerfile:1.7
+
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
-WORKDIR /src
+WORKDIR /app
+
+# ВАЖНО: говорим uv, что venv проекта = /opt/venv
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --no-dev --frozen --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev --frozen --no-install-project
 
 COPY . .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev --frozen
 
-RUN uv sync --no-dev
+# sanity-check: теперь alembic обязан быть в /opt/venv/bin
+RUN /opt/venv/bin/alembic --version
 
-FROM python:3.12-slim
-WORKDIR /src
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+FROM python:3.12-slim-bookworm AS runtime
+WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libpq5 \
-    dos2unix \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
-COPY --from=builder /src/.venv /opt/venv
-COPY --from=builder /src /src
-COPY docker/entrypoint.sh /entrypoint.sh
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      ca-certificates \
+      libpq5 \
+      postgresql-client \
+    ; \
+    rm -rf /var/lib/apt/lists/*; \
+    useradd -m -u 1000 -s /usr/sbin/nologin appuser
 
-RUN dos2unix /entrypoint.sh || true
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /app/src /app/src
+COPY --from=builder /app/alembic.ini /app/alembic.ini
+COPY --from=builder /app/pyproject.toml /app/pyproject.toml
+COPY --from=builder /app/uv.lock /app/uv.lock
 
-ENV VIRTUAL_ENV=/opt/venv \
-    PATH="/opt/venv/bin:${PATH}"
-
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /src
-RUN chmod +x /entrypoint.sh
-
+RUN chown -R appuser:appuser /app /opt/venv
 USER appuser
 
 EXPOSE 8000
-
-ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
