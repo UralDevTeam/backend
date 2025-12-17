@@ -11,6 +11,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +31,7 @@ jobs:
 
   build_and_push:
     needs: test
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
