@@ -1,5 +1,7 @@
 """Test fixtures and configuration for pytest."""
 import asyncio
+import os
+import sqlalchemy
 from datetime import date
 from typing import AsyncGenerator
 from uuid import UUID
@@ -10,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from uuid6 import uuid7
 
 from src.domain.models import User, Employee, Team, Position, EmployeeStatus
-from src.infrastructure.db.models import Base
+from src.infrastructure.db.models import Base, TeamOrm
 from src.infrastructure.repositories.user import UserRepository
 from src.infrastructure.repositories.employee import EmployeeRepository
 from src.infrastructure.repositories.team import TeamRepository
@@ -20,8 +22,11 @@ from src.application.services.user import UserService
 from src.application.services.avatar import AvatarService
 
 
-# Test database URL (in-memory SQLite for testing)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Test database URL - use PostgreSQL for testing to support all features
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db"
+)
 
 
 @pytest.fixture(scope="session")
@@ -47,9 +52,15 @@ async def engine():
     
     yield engine
     
-    # Drop all tables after tests
+    # Drop all tables after tests with CASCADE for circular dependencies
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        # Drop tables manually with CASCADE to handle circular dependencies
+        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS status_history CASCADE"))
+        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS avatars CASCADE"))
+        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS employees CASCADE"))
+        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS teams CASCADE"))
+        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS positions CASCADE"))
+        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS users CASCADE"))
     
     await engine.dispose()
 
@@ -129,13 +140,24 @@ async def sample_team(team_repo: TeamRepository, session: AsyncSession) -> Team:
     team_id = uuid7()
     leader_id = uuid7()
     
-    team = await team_repo.create(
-        name="Development",
-        leader_employee_id=leader_id,
-        parent_id=None,
+    # Temporarily disable foreign key constraint checking for this transaction
+    await session.execute(sqlalchemy.text("SET CONSTRAINTS ALL DEFERRED"))
+    
+    # Use raw SQL to insert the team
+    await session.execute(
+        sqlalchemy.text(
+            "INSERT INTO teams (id, name, parent_id, leader_employee_id) "
+            "VALUES (:id, :name, :parent_id, :leader_id)"
+        ),
+        {"id": team_id, "name": "Development", "parent_id": None, "leader_id": leader_id}
     )
-    await session.commit()
-    return team
+    await session.flush()
+    
+    # Fetch the created team using the repository
+    stmt = sqlalchemy.select(TeamOrm).where(TeamOrm.id == team_id)
+    result = await session.execute(stmt)
+    team_orm = result.scalar_one()
+    return Team.model_validate(team_orm)
 
 
 @pytest_asyncio.fixture

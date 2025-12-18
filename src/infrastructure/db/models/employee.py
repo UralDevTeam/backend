@@ -40,7 +40,9 @@ class EmployeeOrm(Base):
     department: Mapped[str | None] = mapped_column(String, nullable=True)
 
     team_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False
+        PG_UUID(as_uuid=True), 
+        ForeignKey("teams.id", deferrable=True, initially="DEFERRED"), 
+        nullable=False
     )
     position_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("positions.id"), nullable=False

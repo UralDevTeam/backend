@@ -27,7 +27,9 @@ class TeamOrm(Base):
     )
 
     leader_employee_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("employees.id", ondelete="CASCADE"), nullable=False
+        PG_UUID(as_uuid=True), 
+        ForeignKey("employees.id", ondelete="CASCADE", deferrable=True, initially="DEFERRED"), 
+        nullable=False
     )
 
     parent: Mapped[Optional["TeamOrm"]] = relationship(

@@ -467,7 +467,6 @@ class TestUserServiceUpdateUser:
         assert updated_user.isAdmin is False
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_update_user_change_team_existing(
         self,
         user_service: UserService,
@@ -490,7 +489,6 @@ class TestUserServiceUpdateUser:
         assert "Development" in updated_user.team
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_update_user_create_new_team(
         self,
         user_service: UserService,
@@ -528,7 +526,6 @@ class TestUserServiceCreateUser:
     """Tests for the create_user method."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_create_user_basic(
         self,
         user_service: UserService,
@@ -573,7 +570,6 @@ class TestUserServiceCreateUser:
         assert new_user.isAdmin is False
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_create_user_with_new_team(
         self,
         user_service: UserService,
@@ -654,7 +650,6 @@ class TestUserServiceCreateUser:
             )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_create_admin_user(
         self,
         user_service: UserService,
@@ -851,7 +846,6 @@ class TestUserServiceDeleteUser:
 
 
 @pytest.mark.integration
-@pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function in team lookups)")
 class TestUserServiceResolveTeamId:
     """Tests for the _resolve_team_id method (team hierarchy handling)."""
 
