@@ -17,22 +17,22 @@ router = APIRouter()
 
 bearer_scheme = HTTPBearer(auto_error=True)
 
-pwd = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 Role = Literal["admin", "user"]
 
-SECRET_KEY = "super-secret-key-change-me"  # брать из env
+SECRET_KEY = "super-secret-key-change-me"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 8 * 60
 
 
-def hash_password(p: str) -> str:
-    return pwd.hash(p)
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """Проверка совпадения пароля"""
-    return pwd.verify(plain, hashed)
+    return pwd_context.verify(plain, hashed)
 
 
 class UserIn(BaseModel):

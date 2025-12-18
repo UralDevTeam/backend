@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 from src.application.dto import PingResponse
-from src.application.services import get_pong
 
 router = APIRouter()
 

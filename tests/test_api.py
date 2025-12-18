@@ -1,8 +1,21 @@
-"""Basic API endpoint tests."""
+"""API endpoint tests."""
 import pytest
 from fastapi.testclient import TestClient
 
-# Skip these tests for now as they require full application setup
-# These would boost coverage significantly but need more setup
+from src.main import app
 
-pytestmark = pytest.mark.skip(reason="API tests require full application setup with auth")
+
+@pytest.fixture
+def client():
+    """Create a test client for the FastAPI app."""
+    return TestClient(app)
+
+
+class TestPingEndpoint:
+    """Tests for the ping endpoint."""
+    
+    def test_ping_returns_pong(self, client):
+        """Test that ping endpoint returns pong."""
+        response = client.get("/api/ping")
+        assert response.status_code == 200
+        assert response.json() == {"ping": "pong"}
