@@ -3,33 +3,30 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
 WORKDIR /app
 
-# Важно: uv будет ставить всё в /opt/venv, а не в /app/.venv
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
 COPY pyproject.toml uv.lock ./
-
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev --frozen --no-install-project
 
 COPY . .
-
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev --frozen
 
-# Фейлим сборку, если alembic не установился
-RUN /opt/venv/bin/python -c "import alembic; print('alembic ok')"
-RUN /opt/venv/bin/alembic --version
+# ОБЯЗАТЕЛЬНО: если alembic не установлен — билд должен упасть
+RUN test -x /opt/venv/bin/alembic && /opt/venv/bin/alembic --version
 
 
 FROM python:3.12-slim-bookworm AS runtime
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    VIRTUAL_ENV=/opt/venv \
-    PATH="/opt/venv/bin:$PATH"
+ENV VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 
 RUN set -eux; \
     apt-get update; \
@@ -44,8 +41,6 @@ RUN set -eux; \
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /app/src /app/src
 COPY --from=builder /app/alembic.ini /app/alembic.ini
-COPY --from=builder /app/pyproject.toml /app/pyproject.toml
-COPY --from=builder /app/uv.lock /app/uv.lock
 
 RUN chown -R appuser:appuser /app /opt/venv
 USER appuser

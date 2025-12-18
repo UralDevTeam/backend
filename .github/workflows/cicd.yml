@@ -58,6 +58,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./Dockerfile              # 👈 ВАЖНО: явно указываем Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
@@ -65,6 +66,16 @@ jobs:
             ${{ env.IMAGE }}:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # 👇 Smoke-check: убедимся, что в образе реально есть alembic
+      # Проверяем хотя бы amd64 (runner amd64). Это ловит проблему до деплоя.
+      - name: Smoke check image (alembic exists)
+        run: |
+          set -eu
+          IMG="${IMAGE}:${{ steps.vars.outputs.sha_short }}"
+          docker pull --platform=linux/amd64 "$IMG"
+          docker run --rm --platform=linux/amd64 --entrypoint sh "$IMG" -lc \
+            'which alembic && alembic --version'
 
   deploy:
     needs: build_and_push
