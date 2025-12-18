@@ -45,11 +45,15 @@ class TestUserServiceListUsers:
         
         users = await user_service.list_users()
         
-        assert len(users) == 1
-        assert users[0].id == str(sample_employee.id)
-        assert users[0].email == sample_employee.email
-        assert users[0].fio == "Doe John Michael"
-        assert users[0].isAdmin is False
+        # We have 2 employees: the leader from sample_team fixture and sample_employee
+        # But only sample_employee has a user account linked to it
+        assert len(users) == 2  # Leader from sample_team + sample_employee
+        
+        # Find the employee we created (not the leader)
+        user = next(u for u in users if u.email == sample_employee.email)
+        assert user.id == str(sample_employee.id)
+        assert user.fio == "Doe John Michael"
+        assert user.isAdmin is False
 
     @pytest.mark.asyncio
     async def test_list_users_with_admin(
@@ -64,8 +68,12 @@ class TestUserServiceListUsers:
         
         users = await user_service.list_users()
         
-        assert len(users) == 1
-        assert users[0].isAdmin is True
+        # We have 2 employees: the leader from sample_team fixture and admin_employee
+        assert len(users) == 2
+        
+        # Find the admin user
+        admin = next(u for u in users if u.email == admin_employee.email)
+        assert admin.isAdmin is True
 
     @pytest.mark.asyncio
     async def test_list_users_sorted_by_last_name(
@@ -122,10 +130,13 @@ class TestUserServiceListUsers:
         
         users = await user_service.list_users()
         
-        assert len(users) == 3
+        # We have 4 employees: leader from sample_team + 3 created above
+        assert len(users) == 4
         assert users[0].fio == "Alpha Alice A"
         assert users[1].fio == "Beta Bob B"
-        assert users[2].fio == "Zebra Charlie C"
+        # Boss is the team leader from the fixture
+        assert users[2].fio == "Boss Team Leader"
+        assert users[3].fio == "Zebra Charlie C"
 
 
 @pytest.mark.integration

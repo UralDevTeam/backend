@@ -135,25 +135,54 @@ async def sample_position(position_repo: PositionRepository, session: AsyncSessi
 
 
 @pytest_asyncio.fixture
-async def sample_team(team_repo: TeamRepository, session: AsyncSession) -> Team:
-    """Create a sample team for testing."""
-    team_id = uuid7()
+async def sample_team(
+    team_repo: TeamRepository, 
+    employee_repo: EmployeeRepository,
+    position_repo: PositionRepository,
+    session: AsyncSession
+) -> Team:
+    """Create a sample team for testing with a valid leader employee."""
+    # First, create a position for the leader
+    position = await position_repo.get_or_create(title="Team Leader")
+    
+    # Create a placeholder leader employee (without team assignment yet)
     leader_id = uuid7()
+    team_id = uuid7()
     
-    # Temporarily disable foreign key constraint checking for this transaction
-    await session.execute(sqlalchemy.text("SET CONSTRAINTS ALL DEFERRED"))
-    
-    # Use raw SQL to insert the team
+    # Insert team and employee in a way that satisfies circular dependencies
+    # We'll use raw SQL to insert both at once within a deferred constraint transaction
     await session.execute(
         sqlalchemy.text(
             "INSERT INTO teams (id, name, parent_id, leader_employee_id) "
-            "VALUES (:id, :name, :parent_id, :leader_id)"
+            "VALUES (:team_id, :name, NULL, :leader_id)"
         ),
-        {"id": team_id, "name": "Development", "parent_id": None, "leader_id": leader_id}
+        {"team_id": team_id, "name": "Development", "leader_id": leader_id}
     )
+    
+    await session.execute(
+        sqlalchemy.text(
+            "INSERT INTO employees (id, first_name, middle_name, last_name, email, "
+            "birth_date, hire_date, team_id, position_id, is_birthyear_visible) "
+            "VALUES (:id, :first_name, :middle_name, :last_name, :email, "
+            ":birth_date, :hire_date, :team_id, :position_id, :is_birthyear_visible)"
+        ),
+        {
+            "id": leader_id,
+            "first_name": "Team",
+            "middle_name": "Leader",
+            "last_name": "Boss",
+            "email": "leader@example.com",
+            "birth_date": date(1985, 1, 1),
+            "hire_date": date(2015, 1, 1),
+            "team_id": team_id,
+            "position_id": position.id,
+            "is_birthyear_visible": True,
+        }
+    )
+    
     await session.flush()
     
-    # Fetch the created team using the repository
+    # Fetch and return the team
     stmt = sqlalchemy.select(TeamOrm).where(TeamOrm.id == team_id)
     result = await session.execute(stmt)
     team_orm = result.scalar_one()
