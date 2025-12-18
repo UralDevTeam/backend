@@ -7,6 +7,12 @@ services:
         condition: service_healthy
     command: >
       sh -ceu '
+        echo "PATH=$$PATH";
+        which alembic || true;
+        which psql || true;
+        alembic --version;
+        psql --version;
+
         : "$$POSTGRES__PASSWORD";
         export PGPASSWORD="$$POSTGRES__PASSWORD";
 
@@ -17,21 +23,15 @@ services:
         if [ "$${TABLES:-0}" -eq 0 ]; then
           echo "DB looks empty -> will seed after migrations";
           NEED_SEED=true;
-        else
-          echo "DB not empty (tables: $${TABLES:-?}) -> skip seed";
         fi;
 
-        echo "Running migrations...";
         alembic upgrade head;
 
         if [ "$$NEED_SEED" = "true" ] && [ -f src/res/init-db.sql ]; then
-          echo "Seeding DB...";
-          psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME" \
-            -v ON_ERROR_STOP=1 -f src/res/init-db.sql;
-        else
-          echo "Seed skipped.";
+          psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME" -v ON_ERROR_STOP=1 -f src/res/init-db.sql;
         fi
       '
+
     restart: "no"
 
   app:
