@@ -3,21 +3,25 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
 WORKDIR /app
 
-# ВАЖНО: говорим uv, что venv проекта = /opt/venv
+# Важно: uv будет ставить всё в /opt/venv, а не в /app/.venv
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
 COPY pyproject.toml uv.lock ./
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev --frozen --no-install-project
 
 COPY . .
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev --frozen
 
-# sanity-check: теперь alembic обязан быть в /opt/venv/bin
+# Фейлим сборку, если alembic не установился
+RUN /opt/venv/bin/python -c "import alembic; print('alembic ok')"
 RUN /opt/venv/bin/alembic --version
+
 
 FROM python:3.12-slim-bookworm AS runtime
 WORKDIR /app
