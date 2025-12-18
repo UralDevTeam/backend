@@ -21,8 +21,7 @@ from src.infrastructure.repositories.avatar import AvatarRepository
 from src.application.services.user import UserService
 from src.application.services.avatar import AvatarService
 
-# Test database URL - use PostgreSQL for testing to support all features
-TEST_DATABASE_URL = f"postgresql+asyncpg://guest:guest@localhost:5432/guest"
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 
 
 @pytest.fixture(scope="session")
@@ -42,21 +41,21 @@ async def engine():
         future=True,
     )
     
-    # Create all tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
     yield engine
     
-    # Drop all tables after tests with CASCADE for circular dependencies
     async with engine.begin() as conn:
-        # Drop tables manually with CASCADE to handle circular dependencies
-        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS status_history CASCADE"))
-        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS avatars CASCADE"))
-        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS employees CASCADE"))
-        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS teams CASCADE"))
-        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS positions CASCADE"))
-        await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS users CASCADE"))
+        if "sqlite" in TEST_DATABASE_URL:
+            await conn.run_sync(Base.metadata.drop_all)
+        else:
+            await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS status_history CASCADE"))
+            await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS avatars CASCADE"))
+            await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS employees CASCADE"))
+            await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS teams CASCADE"))
+            await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS positions CASCADE"))
+            await conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS users CASCADE"))
     
     await engine.dispose()
 
@@ -138,47 +137,74 @@ async def sample_team(
     session: AsyncSession
 ) -> Team:
     """Create a sample team for testing with a valid leader employee."""
-    # First, create a position for the leader
     position = await position_repo.get_or_create(title="Team Leader")
     
-    # Create a placeholder leader employee (without team assignment yet)
     leader_id = uuid7()
     team_id = uuid7()
     
-    # Insert team and employee in a way that satisfies circular dependencies
-    # We'll use raw SQL to insert both at once within a deferred constraint transaction
-    await session.execute(
-        sqlalchemy.text(
-            "INSERT INTO teams (id, name, parent_id, leader_employee_id) "
-            "VALUES (:team_id, :name, NULL, :leader_id)"
-        ),
-        {"team_id": team_id, "name": "Development", "leader_id": leader_id}
-    )
+    is_sqlite = "sqlite" in str(session.bind.url)
     
-    await session.execute(
-        sqlalchemy.text(
-            "INSERT INTO employees (id, first_name, middle_name, last_name, email, "
-            "birth_date, hire_date, team_id, position_id, is_birthyear_visible) "
-            "VALUES (:id, :first_name, :middle_name, :last_name, :email, "
-            ":birth_date, :hire_date, :team_id, :position_id, :is_birthyear_visible)"
-        ),
-        {
-            "id": leader_id,
-            "first_name": "Team",
-            "middle_name": "Leader",
-            "last_name": "Boss",
-            "email": "leader@example.com",
-            "birth_date": date(1985, 1, 1),
-            "hire_date": date(2015, 1, 1),
-            "team_id": team_id,
-            "position_id": position.id,
-            "is_birthyear_visible": True,
-        }
-    )
+    if is_sqlite:
+        await session.execute(
+            sqlalchemy.text(
+                "INSERT INTO teams (id, name, parent_id, leader_employee_id) "
+                "VALUES (:team_id, :name, NULL, :leader_id)"
+            ),
+            {"team_id": str(team_id), "name": "Development", "leader_id": str(leader_id)}
+        )
+        
+        await session.execute(
+            sqlalchemy.text(
+                "INSERT INTO employees (id, first_name, middle_name, last_name, email, "
+                "birth_date, hire_date, team_id, position_id, is_birthyear_visible) "
+                "VALUES (:id, :first_name, :middle_name, :last_name, :email, "
+                ":birth_date, :hire_date, :team_id, :position_id, :is_birthyear_visible)"
+            ),
+            {
+                "id": str(leader_id),
+                "first_name": "Team",
+                "middle_name": "Leader",
+                "last_name": "Boss",
+                "email": "leader@example.com",
+                "birth_date": date(1985, 1, 1),
+                "hire_date": date(2015, 1, 1),
+                "team_id": str(team_id),
+                "position_id": str(position.id),
+                "is_birthyear_visible": True,
+            }
+        )
+    else:
+        await session.execute(
+            sqlalchemy.text(
+                "INSERT INTO teams (id, name, parent_id, leader_employee_id) "
+                "VALUES (:team_id, :name, NULL, :leader_id)"
+            ),
+            {"team_id": team_id, "name": "Development", "leader_id": leader_id}
+        )
+        
+        await session.execute(
+            sqlalchemy.text(
+                "INSERT INTO employees (id, first_name, middle_name, last_name, email, "
+                "birth_date, hire_date, team_id, position_id, is_birthyear_visible) "
+                "VALUES (:id, :first_name, :middle_name, :last_name, :email, "
+                ":birth_date, :hire_date, :team_id, :position_id, :is_birthyear_visible)"
+            ),
+            {
+                "id": leader_id,
+                "first_name": "Team",
+                "middle_name": "Leader",
+                "last_name": "Boss",
+                "email": "leader@example.com",
+                "birth_date": date(1985, 1, 1),
+                "hire_date": date(2015, 1, 1),
+                "team_id": team_id,
+                "position_id": position.id,
+                "is_birthyear_visible": True,
+            }
+        )
     
     await session.flush()
     
-    # Fetch and return the team
     stmt = sqlalchemy.select(TeamOrm).where(TeamOrm.id == team_id)
     result = await session.execute(stmt)
     team_orm = result.scalar_one()

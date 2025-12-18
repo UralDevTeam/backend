@@ -1,17 +1,16 @@
 from uuid import UUID
 from sqlalchemy import String
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
-from src.infrastructure.db.models.base import Base
+from src.infrastructure.db.models.base import Base, GUID
 from src.infrastructure.db.models.employee import EmployeeOrm
 
 
 class PositionOrm(Base):
     __tablename__ = "positions"
 
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True),
+    id: Mapped[UUID] = mapped_column(GUID,
                                      primary_key=True,
                                      default=uuid7,
                                      )
