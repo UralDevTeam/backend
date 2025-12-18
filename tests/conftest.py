@@ -21,12 +21,8 @@ from src.infrastructure.repositories.avatar import AvatarRepository
 from src.application.services.user import UserService
 from src.application.services.avatar import AvatarService
 
-
 # Test database URL - use PostgreSQL for testing to support all features
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db"
-)
+TEST_DATABASE_URL = f"postgresql+asyncpg://guest:guest@localhost:5432/guest"
 
 
 @pytest.fixture(scope="session")
