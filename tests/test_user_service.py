@@ -45,11 +45,15 @@ class TestUserServiceListUsers:
         
         users = await user_service.list_users()
         
-        assert len(users) == 1
-        assert users[0].id == str(sample_employee.id)
-        assert users[0].email == sample_employee.email
-        assert users[0].fio == "Doe John Michael"
-        assert users[0].isAdmin is False
+        # We have 2 employees: the leader from sample_team fixture and sample_employee
+        # But only sample_employee has a user account linked to it
+        assert len(users) == 2  # Leader from sample_team + sample_employee
+        
+        # Find the employee we created (not the leader)
+        user = next(u for u in users if u.email == sample_employee.email)
+        assert user.id == str(sample_employee.id)
+        assert user.fio == "Doe John Michael"
+        assert user.isAdmin is False
 
     @pytest.mark.asyncio
     async def test_list_users_with_admin(
@@ -64,8 +68,12 @@ class TestUserServiceListUsers:
         
         users = await user_service.list_users()
         
-        assert len(users) == 1
-        assert users[0].isAdmin is True
+        # We have 2 employees: the leader from sample_team fixture and admin_employee
+        assert len(users) == 2
+        
+        # Find the admin user
+        admin = next(u for u in users if u.email == admin_employee.email)
+        assert admin.isAdmin is True
 
     @pytest.mark.asyncio
     async def test_list_users_sorted_by_last_name(
@@ -122,10 +130,13 @@ class TestUserServiceListUsers:
         
         users = await user_service.list_users()
         
-        assert len(users) == 3
+        # We have 4 employees: leader from sample_team + 3 created above
+        assert len(users) == 4
         assert users[0].fio == "Alpha Alice A"
         assert users[1].fio == "Beta Bob B"
-        assert users[2].fio == "Zebra Charlie C"
+        # Boss is the team leader from the fixture
+        assert users[2].fio == "Boss Team Leader"
+        assert users[3].fio == "Zebra Charlie C"
 
 
 @pytest.mark.integration
@@ -467,7 +478,6 @@ class TestUserServiceUpdateUser:
         assert updated_user.isAdmin is False
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_update_user_change_team_existing(
         self,
         user_service: UserService,
@@ -490,7 +500,6 @@ class TestUserServiceUpdateUser:
         assert "Development" in updated_user.team
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_update_user_create_new_team(
         self,
         user_service: UserService,
@@ -528,7 +537,6 @@ class TestUserServiceCreateUser:
     """Tests for the create_user method."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_create_user_basic(
         self,
         user_service: UserService,
@@ -573,7 +581,6 @@ class TestUserServiceCreateUser:
         assert new_user.isAdmin is False
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_create_user_with_new_team(
         self,
         user_service: UserService,
@@ -654,7 +661,6 @@ class TestUserServiceCreateUser:
             )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function)")
     async def test_create_admin_user(
         self,
         user_service: UserService,
@@ -851,7 +857,6 @@ class TestUserServiceDeleteUser:
 
 
 @pytest.mark.integration
-@pytest.mark.skip(reason="Requires PostgreSQL (uses regexp_replace function in team lookups)")
 class TestUserServiceResolveTeamId:
     """Tests for the _resolve_team_id method (team hierarchy handling)."""
 

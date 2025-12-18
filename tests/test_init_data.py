@@ -16,16 +16,47 @@ def _load_block(sql_text: str, table: str) -> str:
 
 
 def _extract_rows(block: str) -> list[list[str]]:
+    """Extract rows from INSERT block, handling multi-line records."""
     rows: list[list[str]] = []
+    current_row = []
+    in_record = False
+    
     for raw_line in block.splitlines():
-        line = raw_line.strip().rstrip(",")
-        if not line.startswith("("):
+        line = raw_line.strip()
+        
+        # Check if this line contains the start of a record (has opening parenthesis)
+        if "(" in line and not in_record:
+            in_record = True
+            # Extract the part after the first (
+            line = line[line.index("("):]
+        
+        # Skip if not in a record
+        if not in_record:
             continue
+        
+        # Check if record ends on this line (before removing trailing comma)
+        record_ends = line.rstrip().endswith("),") or (line.rstrip().endswith(")") and "," not in line.rstrip()[-3:])
+        
+        # Remove trailing comma and comments
+        line = line.rstrip(",")
         if "--" in line:
             line = line.split("--", 1)[0].rstrip()
+        
+        # Extract quoted values from this line
         values = re.findall(r"'([^']*)'", line)
-        if values:
-            rows.append(values)
+        current_row.extend(values)
+        
+        # If record ends on this line
+        if record_ends:
+            if current_row:
+                rows.append(current_row)
+            current_row = []
+            in_record = False
+    
+    # Don't forget the last row if it wasn't saved
+    if in_record and current_row:
+        rows.append(current_row)
+    
     return rows
 
 
@@ -44,7 +75,7 @@ class InitDataTestCase(unittest.TestCase):
         cls.employee_ids = {row[0] for row in cls.employee_rows}
 
     def test_positions_count(self) -> None:
-        self.assertEqual(len(self.position_ids), 10)
+        self.assertEqual(len(self.position_ids), 25)
 
     def test_teams_reference_existing_leaders(self) -> None:
         for row in self.team_rows:
