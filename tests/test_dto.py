@@ -49,7 +49,7 @@ class TestEmployeeCreatePayload:
             email="john@example.com",
             phone="+79001234567",
             position="Developer",
-            team=["IT", "Development"]
+            team="IT / Development"
         )
         assert payload.first_name == "John"
         assert payload.email == "john@example.com"

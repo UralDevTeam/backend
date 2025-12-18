@@ -12,7 +12,7 @@ class TestSettings:
     
     def test_database_url_exists(self):
         """Test that database URL setting exists."""
-        assert hasattr(settings, 'database_url')
+        assert hasattr(settings, 'postgres')
     
     def test_ad_settings_exist(self):
         """Test that AD settings exist."""

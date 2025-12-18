@@ -214,3 +214,30 @@ def test_resolve_boss_id_no_team():
     employee = MockEmp()
     boss_id = resolve_boss_id(employee, {})
     assert boss_id is None
+
+
+def test_build_full_name_empty_names():
+    """Test building full name with empty strings."""
+    employee = MockEmployee(first_name="", middle_name="", last_name="")
+    assert build_full_name(employee) == ""
+
+
+def test_build_short_name_empty():
+    """Test building short name with empty names."""
+    employee = MockEmployee(first_name="", last_name="")
+    assert build_short_name(employee) == ""
+
+
+def test_resolve_grade_empty_position():
+    """Test resolving grade with no position."""
+    class MockEmp:
+        position = None
+    result = resolve_grade(MockEmp())
+    assert result == ""
+
+
+def test_resolve_experience_with_none():
+    """Test resolving experience with None hire date."""
+    class MockEmp:
+        hire_date = None
+    assert resolve_experience(MockEmp()) == 0
