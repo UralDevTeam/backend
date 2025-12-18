@@ -28,5 +28,6 @@ class Employee(BaseModel):
     position: Position
     team: Team
     status_history: list[StatusHistory] = Field(default_factory=list)
+    is_admin: bool = False
 
     model_config = ConfigDict(from_attributes=True, extra="ignore")

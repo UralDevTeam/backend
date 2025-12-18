@@ -22,6 +22,28 @@ from src.infrastructure.repositories import EmployeeRepository
 router = APIRouter()
 
 
+async def _require_admin(
+        current_user: User,
+        employee_repository: EmployeeRepository,
+):
+    employee = await employee_repository.get_by_email(current_user.email)
+    if not employee or not employee.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
+    return employee
+
+
+async def _get_current_employee(
+        current_user: User,
+        employee_repository: EmployeeRepository,
+):
+    employee = await employee_repository.get_by_email(current_user.email)
+    if not employee:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found for current user")
+    return employee
+
+
 @router.get("/users", response_model=list[UserDTO])
 async def get_users(
         user_service: UserService = Depends(get_user_service),
@@ -76,9 +98,9 @@ async def update_user(
         payload: AdminUserUpdatePayload,
         current_user: User = Depends(get_current_user),
         user_service: UserService = Depends(get_user_service),
+        employee_repository: EmployeeRepository = Depends(get_employee_repository),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    await _require_admin(current_user, employee_repository)
 
     try:
         user = await user_service.update_user(user_id, payload)
@@ -96,7 +118,10 @@ async def delete_user(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
+    employee_repository: EmployeeRepository = Depends(get_employee_repository),
 ):
+    await _require_admin(current_user, employee_repository)
+
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
@@ -113,9 +138,9 @@ async def create_user(
         payload: UserCreatePayload,
         current_user: User = Depends(get_current_user),
         user_service: UserService = Depends(get_user_service),
+        employee_repository: EmployeeRepository = Depends(get_employee_repository),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    await _require_admin(current_user, employee_repository)
 
     try:
         created_user = await user_service.create_user(
@@ -147,10 +172,9 @@ async def upload_avatar(
     if not target_employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id '{user_id}' not found")
 
-    if current_user.role != "admin":
-        current_employee = await employee_repository.get_by_email(current_user.email)
-        if not current_employee or current_employee.id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot upload avatar for this user")
+    current_employee = await _get_current_employee(current_user, employee_repository)
+    if not current_employee.is_admin and current_employee.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot upload avatar for this user")
 
     content = await file.read()
     try:
@@ -174,10 +198,9 @@ async def delete_avatar(
     if not target_employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id '{user_id}' not found")
 
-    if current_user.role != "admin":
-        current_employee = await employee_repository.get_by_email(current_user.email)
-        if not current_employee or current_employee.id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot delete avatar for this user")
+    current_employee = await _get_current_employee(current_user, employee_repository)
+    if not current_employee.is_admin and current_employee.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot delete avatar for this user")
 
     try:
         await avatar_service.delete_avatar(user_id)

@@ -206,6 +206,7 @@ class EmployeeRepository:
             legal_entity=getattr(employee_orm, "legal_entity", None),
             department=getattr(employee_orm, "department", None),
             object_id=getattr(employee_orm, "object_id", None),
+            is_admin=getattr(employee_orm, "is_admin", False),
             position=position,
             team=team,
             status_history=status_history,

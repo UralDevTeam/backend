@@ -38,6 +38,7 @@ class EmployeeOrm(Base):
     about_me: Mapped[str | None] = mapped_column(String, nullable=True)
     legal_entity: Mapped[str | None] = mapped_column(String, nullable=True)
     department: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     team_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False

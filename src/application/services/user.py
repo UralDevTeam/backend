@@ -56,11 +56,8 @@ class UserService:
             boss_id = resolve_boss_id(emp, lookup)
             boss = employees_by_id.get(boss_id) if boss_id else None
 
-            user = await self.user_repo.find_by_email(emp.email)
-            is_admin = bool(user and user.role == "admin")
-
             result.append(
-                UserDTO.from_employee(emp, boss=boss, is_admin=is_admin, team_lookup=lookup)
+                UserDTO.from_employee(emp, boss=boss, is_admin=emp.is_admin, team_lookup=lookup)
             )
 
         return result
@@ -75,11 +72,7 @@ class UserService:
 
         boss_id = resolve_boss_id(emp, lookup)
         boss = await self.employee_repo.get_by_id(boss_id) if boss_id else None
-
-        user = await self.user_repo.find_by_email(emp.email)
-        is_admin = bool(user and user.role == "admin")
-
-        return UserDTO.from_employee(emp, boss=boss, is_admin=is_admin, team_lookup=lookup)
+        return UserDTO.from_employee(emp, boss=boss, is_admin=emp.is_admin, team_lookup=lookup)
 
     async def get_me(self, current_user: User) -> UserDTO | None:
         emp = await self.employee_repo.get_by_email(current_user.email)
@@ -95,7 +88,7 @@ class UserService:
         return UserDTO.from_employee(
             emp,
             boss=boss,
-            is_admin=(current_user.role == "admin"),
+            is_admin=emp.is_admin,
             team_lookup=lookup
         )
 
@@ -122,7 +115,7 @@ class UserService:
         return UserDTO.from_employee(
             emp,
             boss=boss,
-            is_admin=(current_user.role == "admin"),
+            is_admin=emp.is_admin,
             team_lookup=team_lookup,
         )
 
@@ -139,7 +132,6 @@ class UserService:
 
         position_title = update_data.pop("position", None)
         team_names = update_data.pop("team", None)
-        is_admin = update_data.pop("is_admin", None)
 
         if position_title:
             position = await self.position_repo.get_or_create(title=position_title)
@@ -155,18 +147,14 @@ class UserService:
             await self.employee_repo.set_status(employee.id, EmployeeStatus(status_value))
 
         user = await self.user_repo.find_by_email(original_email)
-        updated_user = user
 
         user_update_data = {}
-        if is_admin is not None:
-            user_update_data["role"] = "admin" if is_admin else "user"
-
         if "email" in update_data:
             user_update_data["email"] = update_data["email"]
 
         if user_update_data:
             if user:
-                updated_user = await self.user_repo.update_by_email(original_email, user_update_data)
+                await self.user_repo.update_by_email(original_email, user_update_data)
             else:
                 raise ValueError("User account not found for employee to update access")
 
@@ -175,12 +163,10 @@ class UserService:
         boss_id = resolve_boss_id(employee, team_lookup)
         boss = await self.employee_repo.get_by_id(boss_id) if boss_id else None
 
-        is_admin_flag = bool(updated_user and updated_user.role == "admin")
-
         return UserDTO.from_employee(
             employee,
             boss=boss,
-            is_admin=is_admin_flag,
+            is_admin=employee.is_admin,
             team_lookup=team_lookup,
         )
 
@@ -199,7 +185,7 @@ class UserService:
         if await self.employee_repo.get_by_email(email):
             raise ValueError("Employee with the same email already exists")
 
-        new_user = User(id=uuid7(), email=email, password_hash=password_hash, role=role)
+        new_user = User(id=uuid7(), email=email, password_hash=password_hash)
 
         employee_data = employee_payload.copy()
         position_title = employee_data.pop("position")
@@ -231,6 +217,7 @@ class UserService:
                 "email": email,
                 "position_id": position.id,
                 "team_id": team.id,
+                "is_admin": role == "admin"
             }
         )
 
@@ -244,7 +231,7 @@ class UserService:
         return UserDTO.from_employee(
             employee_record,
             boss=boss,
-            is_admin=(role == "admin"),
+            is_admin= role == "admin",
             team_lookup=team_lookup,
         )
 

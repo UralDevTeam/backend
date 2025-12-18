@@ -463,10 +463,13 @@ VALUES
         '2009-09-07T09:00:00+00', NULL) ON CONFLICT (id) DO NOTHING;
 
 -- ===== 5) USERS (учётки для аутентификации) =====
-INSERT INTO users (id, email, password_hash, role)
+INSERT INTO users (id, email, password_hash)
 VALUES ('019aa64f-3f33-7d00-91ce-86c739c66071', 'maria.kotova@udv.com',
-        '$argon2id$v=19$m=65536,t=3,p=4$IiTk/F9LKUXI+Z/zfq+1Fg$BnOQ22n7peKweASZ6pDIhFZ/HH6V5FF4OfOk7aiklvM',
-        'admin') ON CONFLICT (id) DO NOTHING;
+        '$argon2id$v=19$m=65536,t=3,p=4$IiTk/F9LKUXI+Z/zfq+1Fg$BnOQ22n7peKweASZ6pDIhFZ/HH6V5FF4OfOk7aiklvM') ON CONFLICT (id) DO NOTHING;
+
+UPDATE employees
+SET is_admin = TRUE
+WHERE email = 'maria.kotova@udv.com';
 
 -- Возвращаем проверку ограничений в исходное состояние для транзакции
 SET LOCAL session_replication_role = 'origin';
