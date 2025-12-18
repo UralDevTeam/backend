@@ -46,13 +46,13 @@ class TestEmployeeCreatePayload:
             birth_date=date(1990, 1, 1),
             hire_date=date(2020, 1, 1),
             city="Moscow",
-            email="john@example.com",
             phone="+79001234567",
             position="Developer",
             team="IT / Development"
         )
         assert payload.first_name == "John"
-        assert payload.email == "john@example.com"
+        assert payload.position == "Developer"
+        assert payload.team == "IT / Development"
 
 
 class TestUserUpdatePayload:
