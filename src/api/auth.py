@@ -9,9 +9,9 @@ from passlib.context import CryptContext
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from uuid6 import uuid7
 
-from src.api.dependencies import get_user_repository
+from src.api.dependencies import get_employee_repository, get_user_repository
 from src.domain.models.user import User
-from src.infrastructure.repositories import UserRepository
+from src.infrastructure.repositories import EmployeeRepository, UserRepository
 
 router = APIRouter()
 
@@ -143,9 +143,13 @@ async def get_current_user(
 async def register(
     payload: UserIn,
     user_repository: UserRepository = Depends(get_user_repository),
+    employee_repository: EmployeeRepository = Depends(get_employee_repository),
 ) -> UserOut:
     if await user_repository.find_by_email(payload.email):
         raise HTTPException(400, "User already registered")
+
+    if not await employee_repository.get_by_email(payload.email):
+        raise HTTPException(400, "Employee not found")
 
     user = User(
         id=uuid7(),
