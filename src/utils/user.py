@@ -1,4 +1,3 @@
-# src/utils/user_helpers.py
 from datetime import date
 from typing import List, Dict, Set, Optional
 from uuid import UUID
@@ -62,13 +61,13 @@ def resolve_grade(employee) -> str:
     title = resolve_position(employee)
     if not title:
         return ""
-    lt = title.lower()
+    lower_title = title.lower()
 
-    if lt.startswith("team lead"):
+    if lower_title.startswith("team lead"):
         return "Team Lead"
-    for kw in ("junior", "middle", "senior", "lead"):
-        if lt.startswith(kw):
-            return kw.capitalize()
+    for keyword in ("junior", "middle", "senior", "lead"):
+        if lower_title.startswith(keyword):
+            return keyword.capitalize()
     return ""
 
 
