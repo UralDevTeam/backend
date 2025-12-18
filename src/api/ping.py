@@ -7,4 +7,4 @@ router = APIRouter()
 
 @router.get("/ping", response_model=PingResponse)
 def ping() -> PingResponse:
-    return PingResponse(**get_pong())
+    return PingResponse(ping="pong")

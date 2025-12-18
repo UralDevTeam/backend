@@ -3,20 +3,8 @@ import pytest
 from io import BytesIO
 from uuid import uuid4
 
-from src.application.services.ping_service import get_pong
 from src.application.services.avatar import AvatarService
 from src.infrastructure.repositories.avatar import AvatarRepository
-
-
-@pytest.mark.unit
-class TestPingService:
-    """Tests for the ping service."""
-
-    def test_get_pong(self):
-        """Test that get_pong returns expected response."""
-        result = get_pong()
-        assert result == {"ping": "pong"}
-
 
 @pytest.mark.integration
 class TestAvatarService:
