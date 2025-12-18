@@ -7,8 +7,9 @@ from datetime import date
 
 from sqlalchemy import String, Date, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
-from .base import Base, GUID
+from .base import Base
 
 if TYPE_CHECKING:
     from .status_history import StatusHistoryOrm
@@ -20,7 +21,7 @@ class EmployeeOrm(Base):
     __tablename__ = "employees"
 
     id: Mapped[UUID] = mapped_column(
-        GUID, primary_key=True, default=uuid7
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid7
     )
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     middle_name: Mapped[str] = mapped_column(String, nullable=False)
@@ -39,18 +40,18 @@ class EmployeeOrm(Base):
     department: Mapped[str | None] = mapped_column(String, nullable=True)
 
     team_id: Mapped[UUID] = mapped_column(
-        GUID, 
+        PG_UUID(as_uuid=True), 
         ForeignKey("teams.id", deferrable=True, initially="DEFERRED"), 
         nullable=False
     )
     position_id: Mapped[UUID] = mapped_column(
-        GUID, ForeignKey("positions.id"), nullable=False
+        PG_UUID(as_uuid=True), ForeignKey("positions.id"), nullable=False
     )
 
     team: Mapped["TeamOrm"] = relationship(
         "TeamOrm",
         back_populates="members",
-        foreign_keys="EmployeeOrm.team_id",
+        foreign_keys="EmployeeOrm.team_id",  # снимаем двусмысленность
     )
 
     position: Mapped[Optional["PositionOrm"]] = relationship(
