@@ -1,60 +1,66 @@
 services:
-  init:
-    image: fastapi-ldap-app:local
+  app:
     build: .
-    env_file: [ .env ]
+    container_name: fastapi-ldap-app
+    env_file:
+      - .env
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      openldap:
+        condition: service_started
+
+  migrate:
+    build: .
+    env_file:
+      - .env
+    command: ["alembic", "upgrade", "head"]
     depends_on:
       postgres:
         condition: service_healthy
-    command: >
-      sh -ceu '
-        : "$$POSTGRES_PASSWORD";
-        export PGPASSWORD="$$POSTGRES_PASSWORD";
-
-        TABLES="$$(psql -h "$$POSTGRES_HOST" -p "$$POSTGRES_PORT" -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema = '\''public'\'';")";
-
-        NEED_SEED=false;
-        if [ "$${TABLES:-0}" -eq 0 ]; then
-          echo "DB looks empty -> will seed after migrations";
-          NEED_SEED=true;
-        else
-          echo "DB not empty (tables: $${TABLES:-?}) -> skip seed";
-        fi;
-
-        echo "Running migrations...";
-        alembic upgrade head;
-
-        if [ "$$NEED_SEED" = "true" ] && [ -f src/res/init-db.sql ]; then
-          echo "Seeding DB...";
-          psql -h "$$POSTGRES_HOST" -p "$$POSTGRES_PORT" -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -v ON_ERROR_STOP=1 -f src/res/init-db.sql;
-        else
-          echo "Seed skipped.";
-        fi
-      '
-    restart: "no"
-
-  app:
-    image: fastapi-ldap-app:local
-    build: .
-    env_file: [.env]
-    depends_on:
-      init:
-        condition: service_completed_successfully
-    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
-    ports: ["8000:8000"]
 
   postgres:
     image: postgres:17
-    env_file: [ .env ]
-    ports: [ "5432:5432" ]
+    environment:
+      POSTGRES_DB: "guest"
+      POSTGRES_USER: "guest"
+      POSTGRES_PASSWORD: "guest"
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      test: ["CMD-SHELL", "pg_isready -U guest -d guest"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: openldap
+    environment:
+      LDAP_ORGANISATION: "Example Org"
+      LDAP_DOMAIN: "example.org"
+      LDAP_ADMIN_PASSWORD: "admin"
+    ports:
+      - "389:389"
+      - "636:636"
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: phpldapadmin
+    environment:
+      PHPLDAPADMIN_HTTPS: "false"
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+    depends_on:
+      - openldap
+    ports:
+      - "8080:80"
 
 volumes:
   postgres_data:
