@@ -1,4 +1,20 @@
-# syntax=docker/dockerfile:1.6
+FROM python:3.12-slim AS builder
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --no-cache-dir uv
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv export --no-dev --frozen -o requirements.txt
+
+RUN python -m pip install --no-cache-dir --upgrade pip wheel setuptools \
+ && python -m pip wheel --wheel-dir /wheelhouse -r requirements.txt
+
 
 FROM python:3.12-slim AS runtime
 WORKDIR /app
@@ -10,24 +26,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
   && rm -rf /var/lib/apt/lists/*
 
-# ставим uv в runtime
-RUN python -m pip install --no-cache-dir uv
+COPY --from=builder /wheelhouse /wheelhouse
+COPY --from=builder /build/requirements.txt /app/requirements.txt
+RUN python -m pip install --no-cache-dir --no-index --find-links=/wheelhouse -r /app/requirements.txt \
+ && rm -rf /wheelhouse /app/requirements.txt
 
-# зависимости: сначала lock-файлы (кеш)
-COPY pyproject.toml uv.lock ./
-RUN uv sync --no-dev --frozen --no-install-project
-
-# код и alembic
-COPY alembic.ini ./alembic.ini
-COPY src ./src
-
-# теперь ставим проект (если нужно) / финализируем окружение
-RUN uv sync --no-dev --frozen
-
-# PATH на venv, который создал uv в /app/.venv
-ENV VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:${PATH}" \
-    PYTHONPATH=/app
+COPY alembic.ini /app/alembic.ini
+COPY src /app/src
+ENV PYTHONPATH=/app
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
