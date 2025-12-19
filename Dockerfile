@@ -13,8 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv export --no-dev --frozen -o requirements.txt \
- && --mount=type=cache,target=/root/.cache/pip \
+RUN uv export --no-dev --frozen -o requirements.txt
+
+RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip wheel --wheel-dir /wheelhouse -r requirements.txt
 
 
@@ -37,8 +38,8 @@ COPY --from=builder /wheelhouse /wheelhouse
 COPY --from=builder /build/requirements.txt /app/requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m pip install --find-links=/wheelhouse -r /app/requirements.txt \
- && rm -rf /wheelhouse /app/requirements.txt
+    python -m pip install --no-cache-dir --find-links=/wheelhouse -r /app/requirements.txt \
+    && rm -rf /wheelhouse /app/requirements.txt
 
 COPY alembic.ini /app/alembic.ini
 COPY src /app/src
