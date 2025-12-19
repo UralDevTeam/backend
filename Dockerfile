@@ -1,41 +1,50 @@
 FROM python:3.12-slim AS builder
 WORKDIR /build
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-  && rm -rf /var/lib/apt/lists/*
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
 
-RUN python -m pip install --no-cache-dir uv
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+      libpq-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install uv
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv export --no-dev --frozen -o requirements.txt
-
-RUN python -m pip install --no-cache-dir --upgrade pip wheel setuptools \
- && python -m pip wheel --wheel-dir /wheelhouse -r requirements.txt
+RUN uv export --no-dev --frozen -o requirements.txt \
+ && --mount=type=cache,target=/root/.cache/pip \
+    python -m pip wheel --wheel-dir /wheelhouse -r requirements.txt
 
 
 FROM python:3.12-slim AS runtime
 WORKDIR /app
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libpq5 \
-    postgresql-client \
-  && rm -rf /var/lib/apt/lists/*
+      ca-certificates \
+      libpq5 \
+      postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /wheelhouse /wheelhouse
 COPY --from=builder /build/requirements.txt /app/requirements.txt
-RUN python -m pip install --no-cache-dir --find-links=/wheelhouse -r /app/requirements.txt \
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --find-links=/wheelhouse -r /app/requirements.txt \
  && rm -rf /wheelhouse /app/requirements.txt
 
 COPY alembic.ini /app/alembic.ini
 COPY src /app/src
-ENV PYTHONPATH=/app
 
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 1000 appuser \
+ && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
