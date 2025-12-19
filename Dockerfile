@@ -3,10 +3,9 @@ WORKDIR /build
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv pip compile pyproject.toml -o requirements.txt
+RUN uv export --no-dev --frozen -o requirements.txt
 RUN uv pip wheel -r requirements.txt -w /wheelhouse
 
-# ----------------------------
 
 FROM python:3.12-slim AS runtime
 WORKDIR /app
@@ -24,6 +23,8 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheelhouse -r /app/requi
 
 COPY alembic.ini /app/alembic.ini
 COPY src /app/src
+
+ENV PYTHONPATH=/app
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
