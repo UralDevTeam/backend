@@ -70,7 +70,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke check image (alembic + psql exist)
+      - name: Smoke check image (alembic + psql)
         run: |
           set -eu
           IMG="${IMAGE}:${{ steps.vars.outputs.sha_short }}"
@@ -78,12 +78,9 @@ jobs:
           docker run --rm --platform=linux/amd64 --entrypoint /bin/sh "$IMG" -c '
             set -eu
             echo "PATH=$PATH"
-            command -v alembic
-            alembic --version
-            command -v psql
+            python -m alembic --version
             psql --version
           '
-  
 
   deploy:
     needs: build_and_push

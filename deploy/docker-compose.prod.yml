@@ -23,8 +23,8 @@ services:
           NEED_SEED=true;
         fi;
 
-        alembic upgrade head;
-
+        python -m alembic upgrade head;
+      
         if [ "$$NEED_SEED" = "true" ] && [ -f src/res/init-db.sql ]; then
           psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME" \
             -v ON_ERROR_STOP=1 -f src/res/init-db.sql;

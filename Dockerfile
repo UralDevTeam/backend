@@ -22,18 +22,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /src/.venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv PATH="/opt/venv/bin:${PATH}"
+
+RUN set -eux; chmod -R a+rx /opt/venv/bin
 
 COPY --from=builder /src/alembic.ini /app/alembic.ini
 COPY --from=builder /src/src /app/src
 
-ENV VIRTUAL_ENV=/opt/venv \
-    PATH="/opt/venv/bin:${PATH}"
-
-RUN set -eux; \
-    chmod -R a+rx /opt/venv/bin; \
-    if command -v sed >/dev/null 2>&1; then \
-      sed -i 's/\r$//' /opt/venv/bin/* || true; \
-    fi
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
