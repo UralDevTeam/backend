@@ -29,6 +29,12 @@ COPY --from=builder /src/src /app/src
 ENV VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:${PATH}"
 
+RUN set -eux; \
+    chmod -R a+rx /opt/venv/bin; \
+    if command -v sed >/dev/null 2>&1; then \
+      sed -i 's/\r$//' /opt/venv/bin/* || true; \
+    fi
+
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
