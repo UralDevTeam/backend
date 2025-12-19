@@ -1,15 +1,12 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
-WORKDIR /src
+WORKDIR /build
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv sync --no-dev --frozen --no-install-project
+RUN uv pip compile pyproject.toml -o requirements.txt
+RUN uv pip wheel -r requirements.txt -w /wheelhouse
 
-COPY alembic.ini ./
-COPY src ./src
-
-RUN uv sync --no-dev --frozen
-
+# ----------------------------
 
 FROM python:3.12-slim AS runtime
 WORKDIR /app
@@ -21,14 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /src/.venv /opt/venv
-ENV VIRTUAL_ENV=/opt/venv PATH="/opt/venv/bin:${PATH}"
+COPY --from=builder /wheelhouse /wheelhouse
+COPY --from=builder /build/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --no-index --find-links=/wheelhouse -r /app/requirements.txt
 
-RUN set -eux; chmod -R a+rx /opt/venv/bin
-
-COPY --from=builder /src/alembic.ini /app/alembic.ini
-COPY --from=builder /src/src /app/src
-
+COPY alembic.ini /app/alembic.ini
+COPY src /app/src
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
