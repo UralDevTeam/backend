@@ -40,7 +40,9 @@ services:
     depends_on:
       init:
         condition: service_completed_successfully
-    ports: [ "8000:8000" ]
+    ports: [ "443:8000" ]
+    volumes:
+      - /opt/certbot/conf:/etc/letsencrypt:ro
     command:
       - python
       - -m
@@ -55,6 +57,8 @@ services:
       - --ssl-certfile
       - /etc/letsencrypt/live/udvteammap.ddns.net/fullchain.pem
     restart: always
+
+
 
   postgres:
     image: postgres:17
