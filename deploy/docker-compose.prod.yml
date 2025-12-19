@@ -41,7 +41,19 @@ services:
       init:
         condition: service_completed_successfully
     ports: [ "8000:8000" ]
-    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command:
+      - python
+      - -m
+      - uvicorn
+      - src.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --ssl-keyfile
+      - /etc/letsencrypt/live/udvteammap.ddns.net/privkey.pem
+      - --ssl-certfile
+      - /etc/letsencrypt/live/udvteammap.ddns.net/fullchain.pem
     restart: always
 
   postgres:
