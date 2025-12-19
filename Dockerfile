@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /wheelhouse /wheelhouse
 COPY --from=builder /build/requirements.txt /app/requirements.txt
-RUN python -m pip install --no-cache-dir --no-index --find-links=/wheelhouse -r /app/requirements.txt \
+RUN python -m pip install --no-cache-dir --find-links=/wheelhouse -r /app/requirements.txt \
  && rm -rf /wheelhouse /app/requirements.txt
 
 COPY alembic.ini /app/alembic.ini
