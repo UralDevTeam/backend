@@ -5,6 +5,10 @@ on:
     branches: ["main"]
   workflow_dispatch: {}
 
+concurrency:
+  group: cicd-main
+  cancel-in-progress: true
+
 env:
   IMAGE: ${{ secrets.YC_REGISTRY_IMAGE }}
 
@@ -19,6 +23,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Install uv
         run: pip install uv
@@ -31,7 +36,6 @@ jobs:
 
   build_and_push:
     needs: test
-    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,14 +55,13 @@ jobs:
 
       - name: Compute tags
         id: vars
-        run: |
-          echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: echo "sha_short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build & push (multi-arch)
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile              # 👈 ВАЖНО: явно указываем Dockerfile
+          file: ./Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
@@ -67,15 +70,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 👇 Smoke-check: убедимся, что в образе реально есть alembic
-      # Проверяем хотя бы amd64 (runner amd64). Это ловит проблему до деплоя.
       - name: Smoke check image (alembic exists)
         run: |
           set -eu
           IMG="${IMAGE}:${{ steps.vars.outputs.sha_short }}"
           docker pull --platform=linux/amd64 "$IMG"
           docker run --rm --platform=linux/amd64 --entrypoint sh "$IMG" -lc \
-            'which alembic && alembic --version'
+            'command -v alembic && alembic --version && command -v psql && psql --version'
 
   deploy:
     needs: build_and_push
@@ -85,8 +86,7 @@ jobs:
 
       - name: Compute deploy tag
         id: vars
-        run: |
-          echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: echo "sha_short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Upload deploy files to VM
         uses: appleboy/scp-action@v1.0.0
@@ -129,7 +129,6 @@ jobs:
             AD__HOST,AD__PORT,AD__USE_SSL,AD__USER,AD__PASSWORD,AD__BASE_DN,AD__PAGE_SIZE
           script: |
             set -eu
-
             sudo mkdir -p /opt/fastapi-ldap
             sudo chown -R $USER:$USER /opt/fastapi-ldap
             cd /opt/fastapi-ldap
@@ -140,7 +139,6 @@ jobs:
             envsubst < deploy/.env.tmpl > deploy/.env
             chmod 600 deploy/.env
 
-            export IMAGE TAG
             docker compose -f deploy/docker-compose.prod.yml pull
             docker compose -f deploy/docker-compose.prod.yml up -d
 

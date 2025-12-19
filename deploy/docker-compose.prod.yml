@@ -8,15 +8,13 @@ services:
     command: >
       sh -ceu '
         echo "PATH=$$PATH";
-        which alembic || true;
-        which psql || true;
-        alembic --version;
-        psql --version;
+        command -v alembic >/dev/null;
+        command -v psql >/dev/null;
 
-        : "$$POSTGRES__PASSWORD";
+        : "$$POSTGRES__HOST" "$$POSTGRES__PORT" "$$POSTGRES__DB_NAME" "$$POSTGRES__USER" "$$POSTGRES__PASSWORD";
         export PGPASSWORD="$$POSTGRES__PASSWORD";
 
-        TABLES="$$(psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME"
+        TABLES="$$(psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME" \
           -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema = '\''public'\'';")";
 
         NEED_SEED=false;
@@ -28,10 +26,12 @@ services:
         alembic upgrade head;
 
         if [ "$$NEED_SEED" = "true" ] && [ -f src/res/init-db.sql ]; then
-          psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME" -v ON_ERROR_STOP=1 -f src/res/init-db.sql;
+          psql -h "$$POSTGRES__HOST" -p "$$POSTGRES__PORT" -U "$$POSTGRES__USER" -d "$$POSTGRES__DB_NAME" \
+            -v ON_ERROR_STOP=1 -f src/res/init-db.sql;
+        else
+          echo "Seed skipped";
         fi
       '
-
     restart: "no"
 
   app:
@@ -58,7 +58,7 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     restart: always
 
 volumes:

@@ -1,29 +1,23 @@
 .git
-.gitignore
+.github
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache
+.mypy_cache
+.ruff_cache
+dist
+build
+*.egg-info
 
-__pycache__/
-*.py[cod]
-.venv/
-
-tests/
-test_data.txt
+tests
+TESTING.md
+README.md
 users.json
+test_data.txt
 
-.env
-.env.*
-*.key
-*.crt
-
-# --- Local tooling / scripts ---
+deploy
+docker-compose.yml
 registry-push.sh
 restart-docker.sh
-yandex.yml
-
-.idea/
-
-.DS_Store
-Thumbs.db
-
-README.md
-
-docker-compose.yml
