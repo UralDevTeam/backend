@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libpq-dev \
     && rm -rf /var/lib/apt/lists/* \
     && python -m pip install --upgrade pip setuptools wheel \
-    && python -m pip install uv
+    && python -m pip install uv \
     && uv export --no-dev --frozen -o requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
