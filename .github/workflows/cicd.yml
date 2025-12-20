@@ -32,13 +32,11 @@ jobs:
           --health-retries 20
 
     env:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/test_db
-
-      POSTGRES__HOST: 127.0.0.1
-      POSTGRES__PORT: "5432"
-      POSTGRES__DB_NAME: test_db
-      POSTGRES__USER: postgres
-      POSTGRES__PASSWORD: postgres
+      POSTGRES__HOST: ${{ secrets.POSTGRES__HOST }}
+      POSTGRES__PORT: ${{ secrets.POSTGRES__PORT }}
+      POSTGRES__DB_NAME: ${{ secrets.POSTGRES__DB_NAME }}
+      POSTGRES__USER: ${{ secrets.POSTGRES__USER }}
+      POSTGRES__PASSWORD: ${{ secrets.POSTGRES__PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
