@@ -29,13 +29,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 COPY --from=builder /wheelhouse /wheelhouse
 COPY --from=builder /build/requirements.txt /app/requirements.txt
-
 COPY alembic.ini /app/alembic.ini
 COPY src /app/src
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --no-cache-dir --find-links=/wheelhouse -r /app/requirements.txt \
-    &&apt-get update && apt-get install -y --no-install-recommends \
+    && apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       libpq5 \
       postgresql-client \
