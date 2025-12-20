@@ -4,16 +4,15 @@ WORKDIR /build
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
+COPY pyproject.toml uv.lock ./
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       libpq-dev \
     && rm -rf /var/lib/apt/lists/* \
     && python -m pip install --upgrade pip setuptools wheel \
     && python -m pip install uv
-
-COPY pyproject.toml uv.lock ./
-
-RUN uv export --no-dev --frozen -o requirements.txt
+    && uv export --no-dev --frozen -o requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip wheel --wheel-dir /wheelhouse -r requirements.txt
@@ -37,15 +36,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /wheelhouse /wheelhouse
 COPY --from=builder /build/requirements.txt /app/requirements.txt
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m pip install --no-cache-dir --find-links=/wheelhouse -r /app/requirements.txt \
-    && rm -rf /wheelhouse /app/requirements.txt
-
 COPY alembic.ini /app/alembic.ini
 COPY src /app/src
 
-RUN useradd -m -u 1000 appuser \
- && chown -R appuser:appuser /app
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --no-cache-dir --find-links=/wheelhouse -r /app/requirements.txt \
+    && rm -rf /wheelhouse /app/requirements.txt \
+    && useradd -m -u 1000 appuser \
+    && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
