@@ -15,7 +15,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    continue-on-error: true
+
     services:
       postgres:
         image: postgres:16
@@ -32,11 +32,8 @@ jobs:
           --health-retries 20
 
     env:
-      # Подстрой под то, как у тебя читается конфиг.
-      # Если у тебя используется DATABASE_URL — оставь её.
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/test_db
 
-      # Если проект читает именно POSTGRES__* (как в deploy) — это тоже полезно:
       POSTGRES__HOST: 127.0.0.1
       POSTGRES__PORT: "5432"
       POSTGRES__DB_NAME: test_db
@@ -73,9 +70,8 @@ jobs:
               raise SystemExit("postgres not reachable")
           PY
 
-      # Если тестам нужны миграции — включи этот шаг (часто нужно)
-      # - name: Run migrations
-      #   run: uv run alembic upgrade head
+      - name: Run migrations
+        run: uv run alembic upgrade head
 
       - name: Run tests
         run: uv run pytest -q
@@ -169,4 +165,27 @@ jobs:
           POSTGRES__PASSWORD: ${{ secrets.POSTGRES__PASSWORD }}
           AD__PASSWORD: ${{ secrets.AD__PASSWORD }}
         with:
-          host: ${{ secrets.VM_HOST_
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          envs: >
+            IMAGE,TAG,
+            POSTGRES__HOST,POSTGRES__PORT,POSTGRES__DB_NAME,POSTGRES__USER,POSTGRES__PASSWORD,
+            AD__HOST,AD__PORT,AD__USE_SSL,AD__USER,AD__PASSWORD,AD__BASE_DN,AD__PAGE_SIZE
+          script: |
+            set -eu
+            sudo mkdir -p /opt/fastapi-ldap
+            sudo chown -R $USER:$USER /opt/fastapi-ldap
+            cd /opt/fastapi-ldap
+
+            command -v envsubst >/dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y gettext-base)
+
+            export IMAGE TAG
+            envsubst < deploy/.env.tmpl > deploy/.env
+            chmod 600 deploy/.env
+
+            docker compose -f deploy/docker-compose.prod.yml pull
+            docker compose -f deploy/docker-compose.prod.yml up -d
+
+            docker image prune -f
