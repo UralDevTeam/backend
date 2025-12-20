@@ -14,11 +14,11 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: alpine-latest
     continue-on-error: true
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -32,7 +32,7 @@ jobs:
           --health-retries 20
 
     env:
-      POSTGRES__HOST: ${{ vars.POSTGRES__HOST }}
+      POSTGRES__HOST: 127.0.0.1
       POSTGRES__PORT: ${{ vars.POSTGRES__PORT }}
       POSTGRES__DB_NAME: ${{ vars.POSTGRES__DB_NAME }}
       POSTGRES__USER: ${{ vars.POSTGRES__USER }}
@@ -76,7 +76,7 @@ jobs:
 
   build_and_push:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: alpine-latest
     permissions:
       contents: read
     steps:
