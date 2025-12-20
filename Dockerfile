@@ -6,16 +6,16 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 
 COPY pyproject.toml uv.lock ./
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential \
-      libpq-dev \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
     && rm -rf /var/lib/apt/lists/* \
     && python -m pip install --upgrade pip setuptools wheel \
     && python -m pip install uv \
-    && uv export --no-dev --frozen -o requirements.txt
+    && uv export --no-dev --frozen -o requirements.txt \
+    && python -m pip wheel --wheel-dir /wheelhouse -r requirements.txt
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m pip wheel --wheel-dir /wheelhouse -r requirements.txt
 
 
 FROM python:3.12-slim AS runtime
@@ -27,12 +27,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PYTHONPATH=/app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates \
-      libpq5 \
-      postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY --from=builder /wheelhouse /wheelhouse
 COPY --from=builder /build/requirements.txt /app/requirements.txt
 
@@ -41,6 +35,11 @@ COPY src /app/src
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --no-cache-dir --find-links=/wheelhouse -r /app/requirements.txt \
+    &&apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      libpq5 \
+      postgresql-client \
+    && rm -rf /var/lib/apt/lists/* \
     && rm -rf /wheelhouse /app/requirements.txt \
     && useradd -m -u 1000 appuser \
     && chown -R appuser:appuser /app
